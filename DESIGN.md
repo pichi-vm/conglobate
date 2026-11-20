@@ -493,11 +493,15 @@ Do not duplicate child manifest digests or carapace roots in the lock.
 Conglobate verifies the index from the read-only cache, selects the matching
 platform manifest, and verifies it. A manifest containing scutes must carry
 `dev.pichi.carapace.verity.hash`: the final scute's nonzero SHA-256 root as
-`sha256:<64 lowercase hexadecimal characters>`. The separate `verity.algo`
-annotation is retired from new output. A narrow input-only migration path accepts
-bare roots with an explicit `verity.algo=sha256` for legacy image inputs.
-Bare roots without that declaration, unsupported algorithms, and any separate
-algorithm declaration alongside a qualified root are rejected.
+`sha256:<64 hexadecimal characters>`. Both hex cases are accepted; producers
+emit lowercase. Bare roots are rejected. SHA-256 and hash type 1 are fixed
+by the format; retired `verity.algo` and `verity.hash-type` annotations are
+ignored and cannot override them. The typed annotation view uses direct
+deserialization: unknown fields are ignored regardless of value type, and a
+null optional root is absent. This view is intentionally not a complete OCI
+annotation validator; raw unknown values may survive composition. Producers
+must emit OCI string values. Scutes still require a nonzero root through
+structural validation.
 The root commits the
 complete chain through each scute's salt prefix; no per-scute root annotations
 are needed. Guest boot (`corium.root` in bootconfig) uses the same final root.
@@ -1023,9 +1027,12 @@ extend updates it together with the automatic boot command-line binding.
 Boot-only artifacts have no carapace root annotation. Keep the existing
 per-scute salt/data-blocks for Pichi to reconstruct headers and trees.
 Manifest verity parameters are optional: `data-block-size` and `hash-block-size`
-default to 4096, `version` and `hash-type` default to 1. Producers omit each
-parameter equal to its default; consumers apply defaults only to absent fields
-and validate supplied overrides. Nondefault overrides survive composition;
+default to 4096 and must be powers of two between 512 and 524288 bytes.
+`version` is fixed at 1 and may be omitted. Supplied block sizes and version
+must be strings. They accept decimal spellings supported
+by the native integer parser (including leading zeroes and a leading `+`).
+Producers omit default parameters; consumers decode supplied values into native
+block sizes and the fixed version. Nondefault block sizes survive composition;
 extending a chain with newly sealed scutes requires compatible parameters.
 This completes the existing v1 format without
 changing version identifiers.

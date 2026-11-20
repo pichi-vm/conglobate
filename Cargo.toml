@@ -38,7 +38,6 @@ cli = [
     "dep:lodown",
     "dep:devmap-snapshot",
     "dep:devmap-linux",
-    "dep:devmap-core",
     "devmap-verity/sha2",
     "dep:carapace",
 ]
@@ -88,7 +87,7 @@ lodown = { git = "https://github.com/pichi-vm/lodown.git", branch = "main", vers
 carapace = { git = "https://github.com/pichi-vm/carapace", branch = "main", optional = true, default-features = false, features = ["loop"] }
 devmap-snapshot = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", optional = true }
 devmap-linux = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", optional = true }
-devmap-core = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", optional = true }
+devmap-core = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0" }
 devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", default-features = false }
 
 [dev-dependencies]

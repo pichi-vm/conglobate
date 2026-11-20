@@ -19,20 +19,8 @@ pub(crate) struct AssembledImage {
     image: ResolvedImage,
 }
 impl AssembledImage {
-    fn verity_defaults() -> [(&'static str, u32); 4] {
-        [
-            ("dev.pichi.carapace.verity.data-block-size", 4096),
-            ("dev.pichi.carapace.verity.hash-block-size", 4096),
-            ("dev.pichi.carapace.verity.version", 1),
-            ("dev.pichi.carapace.verity.hash-type", 1),
-        ]
-    }
     fn set_tip_annotation(manifest: &mut serde_json::Value, root: Option<[u8; 32]>) {
         if let Some(root) = root {
-            manifest["annotations"]
-                .as_object_mut()
-                .expect("manifest annotations")
-                .remove("dev.pichi.carapace.verity.algo");
             manifest["annotations"][CARAPACE_ROOT_ANNOTATION] =
                 Digest::Sha256(root).to_string().into();
         }
@@ -225,20 +213,28 @@ impl AssembledImage {
                     parent == root.hash(),
                     "selected root hash differs from scute ancestry"
                 );
-                for (key, default) in Self::verity_defaults() {
-                    let value = annotations
-                        .get(key)
-                        .map(|value| value.as_str().expect("validated annotation").parse::<u32>())
-                        .transpose()?;
-                    if root.base.is_some() && !root.produced.is_empty() {
+                if let Some(base) = root.base {
+                    let verity = &base.image().manifest().annotations.verity;
+                    for (key, size) in [
+                        (
+                            "dev.pichi.carapace.verity.data-block-size",
+                            *verity.data_block_size,
+                        ),
+                        (
+                            "dev.pichi.carapace.verity.hash-block-size",
+                            *verity.hash_block_size,
+                        ),
+                    ] {
+                        let is_default = size == Default::default();
                         anyhow::ensure!(
-                            value.unwrap_or(default) == default,
+                            root.produced.is_empty() || is_default,
                             "source chain uses incompatible verity parameter {key}"
                         );
+                        if is_default {
+                            annotations.remove(key);
+                        }
                     }
-                    if value == Some(default) {
-                        annotations.remove(key);
-                    }
+                    annotations.remove("dev.pichi.carapace.verity.version");
                 }
                 Self::set_tip_annotation(&mut manifest, Some(parent));
             }

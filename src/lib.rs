@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 pub mod artifact;
+mod is_default;
 pub mod launch;
 
 pub mod plan;

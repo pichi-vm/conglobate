@@ -180,7 +180,7 @@ mod tests {
     use super::*;
     use crate::artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
     use sha2::{Digest as _, Sha256};
-    use std::{collections::BTreeMap, fs};
+    use std::fs;
 
     struct ContentFixture {
         directory: tempfile::TempDir,
@@ -248,16 +248,12 @@ mod tests {
             }
             let config = b"{\"requirements\":{}}".to_vec();
             let config_digest = Digest::Sha256(Sha256::digest(&config).into());
-            let annotations: BTreeMap<String, String> = [
-                ("data-block-size", "4096"),
-                ("hash-block-size", "4096"),
-                ("version", "1"),
-                ("hash-type", "1"),
-                ("hash", &Digest::Sha256(parent).to_string()),
-            ]
-            .into_iter()
-            .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))
-            .collect();
+            let annotations = crate::artifact::ManifestAnnotations {
+                verity: crate::artifact::CarapaceVerity {
+                    root: Some(Digest::Sha256(parent)),
+                    ..Default::default()
+                },
+            };
             let manifest = Manifest {
                 schema_version: Default::default(),
                 media_type: MANIFEST.into(),

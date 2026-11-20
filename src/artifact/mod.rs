@@ -13,15 +13,18 @@
 
 mod as_string;
 mod boot_config_descriptor;
+mod carapace_verity;
 mod config;
 mod digest;
 mod index;
 mod manifest;
+mod manifest_annotations;
 mod media_type;
 mod reference;
 
 pub use as_string::AsString;
 pub use boot_config_descriptor::BootConfigDescriptor;
+pub use carapace_verity::CarapaceVerity;
 pub use config::{
     Band, Config, Ingress, Interface, Memory, PortSpec, Recommendation, Requirements, Slot, Storage,
 };
@@ -30,6 +33,7 @@ pub use manifest::{
     CARAPACE_ROOT_ANNOTATION, ConfigDescriptor, Layer, Manifest, ManifestValidationError,
     PmiDescriptor, ScuteAnnotations, ScuteDescriptor,
 };
+pub use manifest_annotations::ManifestAnnotations;
 pub use media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
     MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
