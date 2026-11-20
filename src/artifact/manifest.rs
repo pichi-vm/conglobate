@@ -713,6 +713,7 @@ mod tests {
                 },
             })],
             annotations: ManifestAnnotations {
+                oci: Default::default(),
                 verity: super::super::CarapaceVerity {
                     root: Some(Digest::Sha256([0xab; 32])),
                     ..Default::default()

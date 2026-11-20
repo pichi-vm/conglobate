@@ -413,6 +413,7 @@ pub(crate) mod tests {
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers,
                 annotations: crate::artifact::ManifestAnnotations {
+                    oci: Default::default(),
                     verity: crate::artifact::CarapaceVerity {
                         root: Some(crate::artifact::Digest::Sha256(root)),
                         ..Default::default()

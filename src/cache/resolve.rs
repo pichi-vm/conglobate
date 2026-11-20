@@ -249,6 +249,7 @@ mod tests {
             let config = b"{\"requirements\":{}}".to_vec();
             let config_digest = Digest::Sha256(Sha256::digest(&config).into());
             let annotations = crate::artifact::ManifestAnnotations {
+                oci: Default::default(),
                 verity: crate::artifact::CarapaceVerity {
                     root: Some(Digest::Sha256(parent)),
                     ..Default::default()
