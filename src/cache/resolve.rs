@@ -127,11 +127,7 @@ impl Cache {
                 "selected descriptor is not an image manifest",
             ));
         }
-        let digest = selected
-            .digest
-            .parse()
-            .map_err(|_| CacheError::Invalid("invalid manifest digest"))?;
-        let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
+        let manifest_bytes = self.metadata(&selected.digest, Some(selected.size))?;
         let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
         manifest.validate()?;
         // The shared format validates artifact contents, not the OCI envelope.
@@ -168,10 +164,7 @@ impl crate::image::ImageReference {
                 "ambiguous bootstrap tag in local cache",
             ));
         }
-        selected
-            .digest
-            .parse()
-            .map_err(|_| CacheError::Invalid("invalid cached bootstrap digest"))
+        Ok(IndexDigest::from_bytes(selected.digest.as_sha256_array()))
     }
 }
 

@@ -282,7 +282,7 @@ impl AssembledImage {
             manifests: vec![crate::artifact::IndexDescriptor {
                 media_type: crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1.into(),
                 artifact_type: Some(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into()),
-                digest: digest.to_string(),
+                digest,
                 size: manifest.len() as u64,
                 platform: Some(crate::artifact::Platform {
                     os: "pichi".into(),
