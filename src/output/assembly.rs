@@ -171,16 +171,14 @@ impl AssembledImage {
                     ..Default::default()
                 })?;
                 let digest = staged.store_blob(&bytes)?;
-                manifest["config"] =
-                    serde_json::to_value(crate::artifact::ConfigDescriptor::for_config(
-                        digest.to_string(),
-                        bytes.len() as u64,
-                    ))?;
+                manifest["config"] = serde_json::to_value(
+                    crate::artifact::ConfigDescriptor::for_config(digest, bytes.len() as u64),
+                )?;
             } else if let Some(image) = metadata
                 && !image.image().manifest().config.is_empty()
             {
                 let config = &image.image().manifest().config;
-                staged.copy_blob(cache, &config.digest.parse()?, config.size)?;
+                staged.copy_blob(cache, &config.digest, config.size)?;
             } else {
                 staged.store_blob(b"{}")?;
             }
@@ -357,7 +355,7 @@ mod tests {
                 crate::artifact::ConfigDescriptor::canonical()
             } else {
                 crate::artifact::ConfigDescriptor::for_config(
-                    Digest::Sha256(Sha256::digest(&config).into()).to_string(),
+                    Digest::Sha256(Sha256::digest(&config).into()),
                     config.len() as u64,
                 )
             };
@@ -768,7 +766,7 @@ mod tests {
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(config.digest.strip_prefix("sha256:").unwrap()),
+                .join(config.digest.hex()),
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
