@@ -273,14 +273,14 @@ pub struct ScuteAnnotations {
     pub salt: AsString<Salt>,
     /// Required SHA-256 of the exact decompressed bytes.
     #[serde(rename = "dev.pichi.scute.digest")]
-    pub digest: String,
+    pub digest: Digest,
     /// Required exact decompressed byte count as a decimal annotation string.
     #[serde(rename = "dev.pichi.scute.size")]
     pub size: AsString<std::num::NonZeroU64>,
     /// Required SHA-256 of the complete generated verity file, including its
     /// header and padding. This is distinct from the verity root.
     #[serde(rename = "dev.pichi.scute.verity.digest")]
-    pub verity_digest: String,
+    pub verity_digest: Digest,
 }
 
 /// PMI layer descriptor. Digest and size identify the encoded blob bytes.
@@ -501,27 +501,10 @@ impl Manifest {
             {
                 return Err(ManifestValidationError::BadScuteBlocks(d.digest.clone()));
             }
-            for (key, value) in [
-                ("dev.pichi.scute.digest", &d.annotations.digest),
-                (
-                    "dev.pichi.scute.verity.digest",
-                    &d.annotations.verity_digest,
-                ),
-            ] {
-                if !value
-                    .parse::<Digest>()
-                    .is_ok_and(|digest| digest.to_string() == *value)
-                {
-                    return Err(ManifestValidationError::BadScuteAnnotation {
-                        key,
-                        value: value.clone(),
-                    });
-                }
-            }
-            if matches!(layer, Layer::Scute(_)) && d.annotations.digest != d.digest {
+            if matches!(layer, Layer::Scute(_)) && d.annotations.digest.to_string() != d.digest {
                 return Err(ManifestValidationError::BadScuteAnnotation {
                     key: "dev.pichi.scute.digest",
-                    value: d.annotations.digest.clone(),
+                    value: d.annotations.digest.to_string(),
                 });
             }
             let size = d.annotations.size.get();
@@ -641,9 +624,9 @@ mod tests {
     #[test]
     fn data_blocks_is_a_required_positive_decimal_annotation() {
         let annotations = ScuteAnnotations {
-            digest: format!("sha256:{}", "11".repeat(32)),
+            digest: Digest::Sha256([0x11; 32]),
             size: NonZeroU64::new(1024).unwrap().into(),
-            verity_digest: format!("sha256:{}", "22".repeat(32)),
+            verity_digest: Digest::Sha256([0x22; 32]),
             salt: Salt::new(&[0]).unwrap().into(),
             data_blocks: std::num::NonZeroU64::new(2).unwrap().into(),
         };
@@ -710,15 +693,15 @@ mod tests {
         let Layer::Scute(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        scute.annotations.digest = scute.digest.clone();
+        scute.annotations.digest = scute.digest.parse().unwrap();
         scute.annotations.size = NonZeroU64::new(scute.size).unwrap().into();
-        scute.annotations.verity_digest = format!("sha256:{}", "34".repeat(32));
+        scute.annotations.verity_digest = Digest::Sha256([0x34; 32]);
         manifest.validate().unwrap();
         let original = manifest.layers[0].clone();
         let Layer::Scute(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        scute.annotations.digest = format!("sha256:{}", "ff".repeat(32));
+        scute.annotations.digest = Digest::Sha256([0xff; 32]);
         assert!(matches!(
             manifest.validate(),
             Err(ManifestValidationError::BadScuteAnnotation {
@@ -727,27 +710,6 @@ mod tests {
             })
         ));
         manifest.layers[0] = original.clone();
-        for field in ["digest", "verity_digest"] {
-            for value in [
-                "sha256:abcd".into(),
-                format!("sha512:{}", "12".repeat(32)),
-                format!("sha256:{}", "AB".repeat(32)),
-            ] {
-                let Layer::Scute(scute) = &mut manifest.layers[0] else {
-                    unreachable!()
-                };
-                if field == "digest" {
-                    scute.annotations.digest = value;
-                } else {
-                    scute.annotations.verity_digest = value;
-                }
-                assert!(matches!(
-                    manifest.validate(),
-                    Err(ManifestValidationError::BadScuteAnnotation { .. })
-                ));
-                manifest.layers[0] = original.clone();
-            }
-        }
         for size in [1023, 1025] {
             let Layer::Scute(scute) = &mut manifest.layers[0] else {
                 unreachable!()
@@ -827,9 +789,9 @@ mod tests {
                     .into(),
                 size: 1024,
                 annotations: ScuteAnnotations {
-                    digest: format!("sha256:{}", "11".repeat(32)),
+                    digest: Digest::Sha256([0x11; 32]),
                     size: NonZeroU64::new(1024).unwrap().into(),
-                    verity_digest: format!("sha256:{}", "22".repeat(32)),
+                    verity_digest: Digest::Sha256([0x22; 32]),
                     data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
                     salt: Salt::new(&[0; 32]).unwrap().into(),
                 },
@@ -1183,9 +1145,9 @@ mod tests {
             digest: "sha256:dead".into(),
             size: 0,
             annotations: ScuteAnnotations {
-                digest: format!("sha256:{}", "11".repeat(32)),
+                digest: Digest::Sha256([0x11; 32]),
                 size: NonZeroU64::new(1024).unwrap().into(),
-                verity_digest: format!("sha256:{}", "22".repeat(32)),
+                verity_digest: Digest::Sha256([0x22; 32]),
                 data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
                 salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
             },
@@ -1205,9 +1167,9 @@ mod tests {
             digest: "sha256:dead".into(),
             size: 0,
             annotations: ScuteAnnotations {
-                digest: format!("sha256:{}", "11".repeat(32)),
+                digest: Digest::Sha256([0x11; 32]),
                 size: NonZeroU64::new(1024).unwrap().into(),
-                verity_digest: format!("sha256:{}", "22".repeat(32)),
+                verity_digest: Digest::Sha256([0x22; 32]),
                 data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
                 salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
             },

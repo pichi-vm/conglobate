@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Scratch, SnapshotOrigin};
-use crate::artifact::{ScuteAnnotations, ScuteDescriptor};
+use crate::artifact::{Digest, ScuteAnnotations, ScuteDescriptor};
 use crate::output::MeasuredWrite;
 use devmap_core::{BlockSize, Geometry};
 use devmap_snapshot::{Exception, Header};
 use devmap_verity::{Algorithm, Format as _, HashType, Header as VerityHeader, Parameters, Salt};
-use sha2::Digest;
+use sha2::Digest as _;
 use std::{
     fs::File,
     io::{self, BufWriter, Read, Seek, SeekFrom, Write},
@@ -214,11 +214,11 @@ impl<'w> Scratch<'w> {
             digest: format!("sha256:{}", hex::encode(digest.finalize())),
             size,
             annotations: ScuteAnnotations {
-                digest: format!("sha256:{}", hex::encode(data_digest)),
+                digest: Digest::Sha256(data_digest.into()),
                 size: NonZero::new(bytes)
                     .expect("sealed scute is nonempty")
                     .into(),
-                verity_digest: format!("sha256:{}", hex::encode(verity_digest)),
+                verity_digest: Digest::Sha256(verity_digest.into()),
                 data_blocks: data_blocks.into(),
                 salt: header.parameters.salt.into(),
             },
@@ -359,8 +359,8 @@ mod tests {
         decoder.read_to_end(&mut decoded).unwrap();
         assert_eq!(decoded, plain);
         assert_eq!(
-            sealed.descriptor().annotations.digest.as_str(),
-            format!("sha256:{}", hex::encode(Sha256::digest(plain))).as_str()
+            sealed.descriptor().annotations.digest,
+            Digest::Sha256(Sha256::digest(plain).into())
         );
         assert_eq!(
             sealed.descriptor().annotations.size.get(),
@@ -403,15 +403,9 @@ mod tests {
             let mut tree = vec![0; 8192];
             sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
             assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
-            let file_digest = format!("sha256:{}", hex::encode(Sha256::digest(&tree)));
-            assert_eq!(
-                sealed.descriptor().annotations.verity_digest.as_str(),
-                file_digest.as_str()
-            );
-            assert_ne!(
-                file_digest,
-                format!("sha256:{}", hex::encode(sealed.root()))
-            );
+            let file_digest = Digest::Sha256(Sha256::digest(&tree).into());
+            assert_eq!(sealed.descriptor().annotations.verity_digest, file_digest);
+            assert_ne!(file_digest, Digest::Sha256(*sealed.root()));
             let header = VerityHeader::decode(tree[..512].try_into().unwrap()).unwrap();
             let salt = header.parameters.salt.as_ref();
             assert_eq!(salt.len(), 64);
@@ -436,10 +430,7 @@ mod tests {
             roots.push(*sealed.root());
             // Host mutation changes its output copy, never the expected identity.
             sealed.files().1.write_all_at(b"changed", 0).unwrap();
-            assert_eq!(
-                sealed.descriptor().annotations.verity_digest.as_str(),
-                file_digest.as_str()
-            );
+            assert_eq!(sealed.descriptor().annotations.verity_digest, file_digest);
         }
         assert_ne!(salts[0][32..], salts[1][32..]);
         assert_ne!(roots[0], roots[1]);
@@ -527,8 +518,8 @@ mod tests {
         // One header, one root block, and two leaf hash blocks.
         assert_eq!(tree.len(), 4 * 4096);
         assert_eq!(
-            sealed.descriptor().annotations.verity_digest.as_str(),
-            format!("sha256:{}", hex::encode(Sha256::digest(&tree))).as_str()
+            sealed.descriptor().annotations.verity_digest,
+            Digest::Sha256(Sha256::digest(&tree).into())
         );
         assert_eq!(std::fs::read_dir(control.path()).unwrap().count(), 0);
     }

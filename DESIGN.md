@@ -1060,7 +1060,8 @@ emit the count used to format the verity tree; no version identifiers change.
 Every scute descriptor must include three content-identity string annotations:
 
 - `dev.pichi.scute.digest`: SHA-256 of the exact decompressed scute bytes,
-  encoded as `sha256:` followed by 64 lowercase hexadecimal digits.
+  encoded as `sha256:` followed by 64 hexadecimal digits. Consumers accept
+  either hexadecimal case; producers emit lowercase.
 - `dev.pichi.scute.size`: the exact decompressed byte count as a positive
   decimal string, without block padding added by a consumer.
 - `dev.pichi.scute.verity.digest`: SHA-256 of the complete generated verity
