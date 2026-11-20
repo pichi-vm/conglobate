@@ -3,13 +3,31 @@
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-/// A document version encoded as the integer `V`.
+/// A document version encoded as the integer `V`, or via Display/FromStr as text.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Version<const V: usize>;
 
 impl<const V: usize> Serialize for Version<V> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         V.serialize(serializer)
+    }
+}
+
+impl<const V: usize> std::fmt::Display for Version<V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        V.fmt(f)
+    }
+}
+
+impl<const V: usize> std::str::FromStr for Version<V> {
+    type Err = &'static str;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text.parse::<usize>().ok() == Some(V) {
+            Ok(Self)
+        } else {
+            Err("unsupported version")
+        }
     }
 }
 
@@ -42,6 +60,17 @@ mod tests {
             version
         );
         assert!(ciborium::from_reader::<Version<1>, _>(bytes.as_slice()).is_err());
+    }
+
+    #[test]
+    fn text_parsing_requires_the_expected_version() {
+        for text in ["1", "01", "+1"] {
+            assert_eq!(text.parse::<Version<1>>().unwrap(), Version);
+        }
+        for text in ["0", "2", "-1", "1.0", " 1", ""] {
+            assert!(text.parse::<Version<1>>().is_err());
+        }
+        assert_eq!(Version::<1>.to_string(), "1");
     }
 
     #[test]
