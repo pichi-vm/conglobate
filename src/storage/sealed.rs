@@ -765,16 +765,7 @@ mod tests {
         drop(selection);
         image.publish().unwrap();
         assert_eq!(
-            std::fs::read(
-                output.join("blobs/sha256").join(
-                    config
-                        .digest
-                        .parse::<crate::artifact::Digest>()
-                        .unwrap()
-                        .hex()
-                )
-            )
-            .unwrap(),
+            std::fs::read(output.join("blobs/sha256").join(config.digest.hex())).unwrap(),
             br#"{"version":1,"requirements":{"slot":"mmio","memory":{"required":1024}}}"#
         );
         let index = std::fs::read(output.join("index.json")).unwrap();

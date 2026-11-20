@@ -80,11 +80,7 @@ impl Cache {
         let manifest = image.manifest();
         let config = &manifest.config;
         if !config.is_empty() {
-            let digest = config
-                .digest
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid config digest"))?;
-            self.verify(&digest, config.size)?;
+            self.verify(&config.digest, config.size)?;
         }
         for layer in &manifest.layers {
             let digest = layer
@@ -270,7 +266,7 @@ mod tests {
                 media_type: MANIFEST.into(),
                 artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::for_config(
-                    config_digest.to_string(),
+                    config_digest.clone(),
                     config.len() as u64,
                 ),
                 layers,

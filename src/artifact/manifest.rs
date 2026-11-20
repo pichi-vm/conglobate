@@ -36,8 +36,10 @@ const CHAIN_ANNOTATION_VERITY_HASH_TYPE: &str = "dev.pichi.carapace.verity.hash-
 pub const CARAPACE_ROOT_ANNOTATION: &str = "dev.pichi.carapace.verity.hash";
 
 /// Canonical SHA-256 digest of `{}` (the OCI 1.1 empty config blob).
-const EMPTY_CONFIG_DIGEST: &str =
-    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
+const EMPTY_CONFIG_DIGEST: Digest = Digest::Sha256([
+    0x44, 0x13, 0x6f, 0xa3, 0x55, 0xb3, 0x67, 0x8a, 0x11, 0x46, 0xad, 0x16, 0xf7, 0xe8, 0x64, 0x9e,
+    0x94, 0xfb, 0x4f, 0xc2, 0x1f, 0xe7, 0x7e, 0x83, 0x10, 0xc0, 0x60, 0xf6, 0x1c, 0xaa, 0xff, 0x8a,
+]);
 /// Canonical base64 encoding of `{}` (used as inline `data` per OCI 1.1).
 const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 
@@ -91,7 +93,7 @@ pub struct ConfigDescriptor {
     #[serde(rename = "mediaType")]
     pub media_type: String,
     /// SHA-256 digest of the config blob.
-    pub digest: String,
+    pub digest: Digest,
     /// Byte length of the config blob.
     pub size: u64,
     /// Base64-encoded inline blob (present for the empty config; omitted for a
@@ -105,7 +107,7 @@ impl ConfigDescriptor {
     pub fn canonical() -> Self {
         Self {
             media_type: MEDIA_TYPE_OCI_EMPTY_V1.to_string(),
-            digest: EMPTY_CONFIG_DIGEST.to_string(),
+            digest: EMPTY_CONFIG_DIGEST,
             size: 2,
             data: Some(EMPTY_CONFIG_DATA_BASE64.to_string()),
         }
@@ -113,7 +115,7 @@ impl ConfigDescriptor {
 
     /// A real config-blob descriptor (`vnd.pichi.config.v1+json`), referenced by
     /// digest; the blob is stored/moved separately.
-    pub fn for_config(digest: String, size: u64) -> Self {
+    pub fn for_config(digest: Digest, size: u64) -> Self {
         Self {
             media_type: MEDIA_TYPE_PICHI_CONFIG_V1.to_string(),
             digest,
@@ -826,7 +828,7 @@ mod tests {
         assert_eq!(c.data.as_deref(), Some("e30="));
         assert_eq!(c.digest, EMPTY_CONFIG_DIGEST);
         // Cross-check: SHA-256 of "{}" really is the EMPTY_CONFIG_DIGEST hex
-        let manual = crate::artifact::Digest::Sha256(Sha256::digest(b"{}").into()).to_string();
+        let manual = Digest::Sha256(Sha256::digest(b"{}").into());
         assert_eq!(manual, EMPTY_CONFIG_DIGEST);
     }
 
@@ -870,10 +872,7 @@ mod tests {
     #[test]
     fn validate_accepts_real_config_blob() {
         let mut m = sample_base_manifest();
-        m.config = ConfigDescriptor::for_config(
-            "sha256:5555555555555555555555555555555555555555555555555555555555555555".into(),
-            42,
-        );
+        m.config = ConfigDescriptor::for_config(Digest::Sha256([0x55; 32]), 42);
         m.validate().unwrap();
     }
 
