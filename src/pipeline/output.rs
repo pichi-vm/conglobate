@@ -189,9 +189,9 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             build.cache(),
             &self,
             build.captured().graph().plan().requirements.as_ref(),
+            build.captured().provenance(request)?,
             staged,
-        )?
-        .bind_build(request, build.captured())?;
+        )?;
         Ok(CompletedImage { image })
     }
 }
@@ -245,23 +245,27 @@ mod tests {
         }
         fn image(&mut self, name: &str, seed: Option<u8>, boot: bool, config: Option<&str>) {
             let mut layers = Vec::new();
-            let mut annotations = serde_json::json!({"example.org/source":name});
+            let mut annotations = serde_json::to_value(crate::cache::tests::annotations()).unwrap();
+            annotations["org.opencontainers.image.source"] = name.into();
             if let Some(seed) = seed {
                 let bytes = vec![seed; 8192];
-                let hash = bytes.scute_root([0; 32]);
+                let (_, tree, hash) = bytes.scute_files([0; 32]);
                 self.roots.insert(name.into(), hash);
-                layers.push(serde_json::json!({"mediaType":"application/vnd.pichi.scute.v1", "digest":self.blob(&bytes), "size":bytes.len(), "annotations":{"dev.pichi.scute.verity.data-blocks":"2", "dev.pichi.scute.verity.salt":"00".repeat(32)}}));
-                // Exercise reuse of currently published, legacy-form inputs.
-                for (key, value) in [
-                    ("algo", "sha256"),
-                    ("data-block-size", "4096"),
-                    ("hash-block-size", "4096"),
-                    ("version", "1"),
-                    ("hash-type", "1"),
-                ] {
-                    annotations[format!("dev.pichi.carapace.verity.{key}")] = value.into();
-                }
-                annotations["dev.pichi.carapace.verity.hash"] = hex::encode(hash).into();
+                let digest = self.blob(&bytes);
+                layers.push(serde_json::json!({
+                    "mediaType": "application/vnd.pichi.scute.v1",
+                    "digest": digest,
+                    "size": bytes.len(),
+                    "annotations": {
+                        "dev.pichi.scute.verity.data-blocks": "2",
+                        "dev.pichi.scute.verity.salt": "00".repeat(32),
+                        "dev.pichi.scute.digest": digest,
+                        "dev.pichi.scute.size": bytes.len().to_string(),
+                        "dev.pichi.scute.verity.digest": Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
+                    }
+                }));
+                annotations["dev.pichi.carapace.verity.hash"] =
+                    Digest::Sha256(hash).to_string().into();
             }
             if boot {
                 let bytes = b"opaque PMI".to_vec();
@@ -275,7 +279,7 @@ mod tests {
                 layers.push(serde_json::json!({"mediaType":"application/vnd.pichi.bootconfig.v1+zstd", "digest":self.blob(&config), "size":config.len()}));
             }
             let config = serde_json::to_vec(&serde_json::json!({"source":name})).unwrap();
-            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":crate::artifact::ConfigDescriptor::for_config(self.blob(&config),config.len() as u64), "layers":layers,"annotations":annotations})).unwrap();
+            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":crate::artifact::ConfigDescriptor::for_config(self.blob(&config).parse().unwrap(),config.len() as u64), "layers":layers,"annotations":annotations})).unwrap();
             let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "digest":self.blob(&manifest),"size":manifest.len(),"platform":{"os":"pichi","architecture":crate::cache::HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
             self.pins
                 .insert(format!("registry.test/{name}:1"), self.blob(&index));
@@ -398,24 +402,15 @@ mod tests {
             )
             .unwrap();
             assert_eq!(manifest.carapace_root().unwrap().is_some(), root);
-            assert!(
-                !manifest
-                    .annotations
-                    .contains_key("dev.pichi.carapace.verity.algo")
+            let verity = &manifest.annotations.verity;
+            assert_eq!(verity.root.is_some(), root);
+            assert_eq!(
+                verity.root.as_ref().map(Digest::as_sha256_array),
+                manifest.carapace_root().unwrap()
             );
-            if let Some(root) = manifest.carapace_root().unwrap() {
-                assert_eq!(
-                    manifest.annotations["dev.pichi.carapace.verity.hash"],
-                    Digest::Sha256(root).to_string()
-                );
-            }
-            for parameter in ["data-block-size", "hash-block-size", "version", "hash-type"] {
-                assert!(
-                    !manifest
-                        .annotations
-                        .contains_key(&format!("dev.pichi.carapace.verity.{parameter}"))
-                );
-            }
+            assert_eq!(verity.data_block_size.bytes().get(), 4096);
+            assert_eq!(verity.hash_block_size.bytes().get(), 4096);
+            assert_eq!(*verity.version, crate::contract::plan::Version::<1>);
             assert_eq!(
                 manifest
                     .layers
@@ -451,10 +446,9 @@ mod tests {
         };
         let mut index = read(&fixture.pins["registry.test/root:1"]);
         let mut manifest = read(index["manifests"][0]["digest"].as_str().unwrap());
-        manifest["annotations"]["dev.pichi.carapace.verity.hash-type"] = "0".into();
         manifest["annotations"]["dev.pichi.carapace.verity.hash-block-size"] = "8192".into();
-        manifest["annotations"]["dev.pichi.carapace.verity.version"] = "2".into();
-        manifest["annotations"]["dev.pichi.carapace.verity.data-block-size"] = "04096".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.version"] = "1".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.data-block-size"] = "4096".into();
         let bytes = serde_json::to_vec(&manifest).unwrap();
         index["manifests"][0]["digest"] = fixture.blob(&bytes).into();
         index["manifests"][0]["size"] = bytes.len().into();
@@ -465,14 +459,10 @@ mod tests {
         let selected = fixture.selected(&build);
         let assembled =
             AssembledImage::components(build.cache(), &selected, None, request.output()).unwrap();
-        let annotations = &assembled.image().manifest().annotations;
-        assert_eq!(annotations["dev.pichi.carapace.verity.hash-type"], "0");
-        assert_eq!(
-            annotations["dev.pichi.carapace.verity.hash-block-size"],
-            "8192"
-        );
-        assert_eq!(annotations["dev.pichi.carapace.verity.version"], "2");
-        assert!(!annotations.contains_key("dev.pichi.carapace.verity.data-block-size"));
+        let verity = &assembled.image().manifest().annotations.verity;
+        assert_eq!(verity.hash_block_size.bytes().get(), 8192);
+        assert_eq!(*verity.version, crate::contract::plan::Version::<1>);
+        assert_eq!(verity.data_block_size.bytes().get(), 4096);
         assert_eq!(assembled.image().root(), Some(fixture.roots["root"]));
     }
 
@@ -616,9 +606,12 @@ mod tests {
             .assemble(&request, &build)
             .unwrap();
         let manifest = assembled.image.image().manifest();
-        assert_eq!(manifest.annotations["dev.pichi.build.bootstrapped"], "true");
-        assert!(!manifest.annotations.contains_key("dev.pichi.build.lock"));
-        assert!(manifest.annotations.contains_key("dev.pichi.build.commit"));
+        assert!(*manifest.annotations.build.bootstrapped);
+        assert!(manifest.annotations.build.lock.is_none());
+        assert_eq!(
+            manifest.annotations.build.commit,
+            build.captured().provenance(&request).unwrap().commit
+        );
         assert_eq!(manifest.layers, image.image().manifest().layers);
     }
 
@@ -658,12 +651,12 @@ mod tests {
                 assembled.publish().unwrap();
                 let bytes = fs::read(
                     request.output().join("blobs/sha256").join(
-                        config.digest.parse::<Digest>().unwrap().hex(),
+                        config.digest.hex(),
                     ),
                 ).unwrap();
                 assert_eq!(bytes, expected.as_bytes());
                 assert_eq!(config.size, bytes.len() as u64);
-                assert_eq!(config.digest, Digest::Sha256(Sha256::digest(&bytes).into()).to_string());
+                assert_eq!(config.digest, Digest::Sha256(Sha256::digest(&bytes).into()));
             }
         }
     }
@@ -678,7 +671,7 @@ mod tests {
         let layers = manifest.layers;
         completed.publish().unwrap();
         for layer in layers {
-            let digest: Digest = layer.digest_str().parse().unwrap();
+            let digest: Digest = layer.digest().clone();
             let present = request
                 .output()
                 .join("blobs/sha256")
@@ -704,7 +697,7 @@ mod tests {
             request
                 .output()
                 .join("blobs/sha256")
-                .join(manifest.config.digest.parse::<Digest>().unwrap().hex())
+                .join(manifest.config.digest.hex())
                 .is_file()
         );
         assert!(request.output().join("oci-layout").exists());
@@ -740,8 +733,14 @@ mod tests {
                 AssembledImage::components(build.cache(), &selected, None, request.output())
                     .unwrap();
             assert_eq!(
-                assembled.image().manifest().annotations["example.org/source"],
-                metadata
+                assembled
+                    .image()
+                    .manifest()
+                    .annotations
+                    .oci
+                    .source
+                    .as_deref(),
+                Some(metadata)
             );
             // Inputs contain no prepared scutes. Reading a source root would fail.
             if root {
@@ -761,7 +760,7 @@ mod tests {
             if boot {
                 let expected = b"opaque PMI".to_vec();
                 let layer = selected.pmi.as_ref().unwrap().source_layer();
-                assert_eq!(layer.digest_str(), fixture.blob(&expected));
+                assert_eq!(layer.digest().to_string(), fixture.blob(&expected));
             }
             assembled.publish().unwrap();
             Fixture::assert_output(request.output(), root, boot, config);

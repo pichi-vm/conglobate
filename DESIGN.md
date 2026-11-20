@@ -494,10 +494,8 @@ Conglobate verifies the index from the read-only cache, selects the matching
 platform manifest, and verifies it. A manifest containing scutes must carry
 `dev.pichi.carapace.verity.hash`: the final scute's nonzero SHA-256 root as
 `sha256:<64 lowercase hexadecimal characters>`. The separate `verity.algo`
-annotation is retired from new output. A narrow input-only migration path accepts
-bare roots with an explicit `verity.algo=sha256` for legacy image inputs.
-Bare roots without that declaration, unsupported algorithms, and any separate
-algorithm declaration alongside a qualified root are rejected.
+annotation is rejected. Roots must include their algorithm; bare roots are not
+supported.
 The root commits the
 complete chain through each scute's salt prefix; no per-scute root annotations
 are needed. Guest boot (`corium.root` in bootconfig) uses the same final root.
@@ -991,6 +989,21 @@ not only on an index, index descriptor, or configuration blob:
 | `dev.pichi.build.bootstrapped` | `"true"` iff this build used a selected bootstrap tool; otherwise absent |
 | `dev.pichi.build.location` | Optional: provenance hint for where to obtain the repository |
 
+`ManifestAnnotations` requires the build group at deserialization. Missing
+commit, context, or plan rejects both new and inherited manifests; lock and
+location remain optional. `Commit` distinguishes SHA-1 and SHA-256 object IDs.
+The string-valued wire encoding is retained through `AsString<T>`; supplied
+numbers, booleans, digests, and timestamps are checked during decoding. Build
+provenance is stamped before the output manifest is first validated.
+
+The flattened `CarapaceVerity` group always exists in Rust. Its optional root
+is required exactly when scutes exist; its other fields hold concrete defaults:
+4096-byte data/hash blocks and `Version<1>`. Hash type is fixed to normal (1). Block sizes use
+Devmap's verity constraints and invalid formats fail at deserialization. Default
+values are omitted from the wire map. Unknown annotation keys are ignored rather
+than retained by the typed view; raw source JSON remains available to assembly
+for preserving unrelated metadata. No annotation grants filesystem authority.
+
 Location says where to get it; commit says what it is; context selects a path
 in that commit; plan and lock select paths relative to context. The commit
 value carries its algorithm. There are no separate tree or object-format keys.
@@ -1023,8 +1036,10 @@ extend updates it together with the automatic boot command-line binding.
 Boot-only artifacts have no carapace root annotation. Keep the existing
 per-scute salt/data-blocks for Pichi to reconstruct headers and trees.
 Manifest verity parameters are optional: `data-block-size` and `hash-block-size`
-default to 4096, `version` and `hash-type` default to 1. Producers omit each
-parameter equal to its default; consumers apply defaults only to absent fields
+default to 4096 and `version` defaults to 1. Hash type 1 is fixed by the scute
+format; the `dev.pichi.carapace.verity.hash-type` annotation is unsupported and
+rejected whenever supplied, including the value `"1"`. Producers omit each
+remaining parameter equal to its default; consumers apply defaults only to absent fields
 and validate supplied overrides. Nondefault overrides survive composition;
 extending a chain with newly sealed scutes requires compatible parameters.
 This completes the existing v1 format without
@@ -1053,7 +1068,7 @@ size; for compressed scutes it bounds decoded bytes, with only the final
 block allowed to be partial. Missing counts are invalid in v1. Producers
 emit the count used to format the verity tree; no version identifiers change.
 
-Newly sealed scutes also publish three per-layer string annotations:
+Every scute descriptor must include three content-identity string annotations:
 
 - `dev.pichi.scute.digest`: SHA-256 of the exact decompressed scute bytes,
   encoded as `sha256:` followed by 64 lowercase hexadecimal digits.
@@ -1076,10 +1091,28 @@ staging is discarded after the sequential copy. This relies on the guest scratch
 storage: private guest permissions do not authenticate its disk against the host.
 Encryption of `/var/tmp` is future work, not provided by this change.
 
-Older input layers may lack these identities. Composition preserves inherited
-layer descriptors, including absent annotations, without inventing identities
-from host-backed data. These optional schema additions do not change version
-identifiers. Every newly sealed layer emits all three annotations.
+Input layers lacking any identity are rejected during manifest parsing, including
+older inherited descriptors. They must be rebuilt by a producer that emits the
+required identities; consumers do not invent them from host-backed output.
+Composition preserves accepted inherited descriptors. Raw scutes must declare
+the same digest and size in their content identities and transport descriptor.
+
+The Rust schema stores content identities as `Digest`, annotation counts as
+`AsString<NonZeroU64>`, and salts as checked byte strings. Their serde implementations
+encode OCI strings and reject malformed values when decoding. `ScuteAnnotations`
+flattens its required verity fields through `ScuteVerity`; `ManifestAnnotations`
+flattens a concrete `CarapaceVerity` group. Its root is optional in Rust and
+required exactly when scutes are present. Block sizes use
+`AsString<devmap_core::BlockSize<devmap_verity::Constraint>>` and default to
+4096 bytes; the header version uses `AsString<Version<1>>`. Default values are
+omitted when serialized. Hash type 1 is fixed by the scute format, and supplying
+a hash-type annotation is rejected.
+Supplied numbers must use canonical decimal strings, without signs or leading
+zeroes; null and numeric JSON values are rejected. Manifest decoding
+also checks the OCI envelope, layer cardinality and order, chain root, and scute
+size/identity relationships. `Manifest::validate()` is available to producers
+that construct or modify a manifest directly. These checks do not authenticate
+blob contents or replace verification of the generated verity chain.
 
 ### 11.2 Finalization and publication
 

@@ -76,7 +76,7 @@ impl<'w> FirmwareFile<'w> {
     }
     pub(crate) fn descriptor(&self) -> crate::artifact::PmiDescriptor {
         crate::artifact::PmiDescriptor {
-            digest: self.digest.to_string(),
+            digest: self.digest.clone(),
             size: self.size,
         }
     }

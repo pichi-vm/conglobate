@@ -64,7 +64,7 @@ impl SealedScute {
         ScuteReader {
             file: self.data.as_file(),
             position: 0,
-            length: self.descriptor.annotations.data_blocks.get() * 4096,
+            length: self.descriptor.annotations.verity.data_blocks.get() * 4096,
         }
     }
 }
@@ -211,14 +211,16 @@ impl<'w> Scratch<'w> {
         hash.as_file().sync_all()?;
         blob.as_file().sync_all()?;
         let descriptor = ScuteDescriptor {
-            digest: format!("sha256:{}", hex::encode(digest.finalize())),
+            digest: crate::artifact::Digest::Sha256(digest.finalize().into()),
             size,
             annotations: ScuteAnnotations {
-                digest: Some(format!("sha256:{}", hex::encode(data_digest))),
-                size: Some(bytes.to_string()),
-                verity_digest: Some(format!("sha256:{}", hex::encode(verity_digest))),
-                data_blocks,
-                salt: hex::encode(salt),
+                digest: crate::artifact::Digest::Sha256(data_digest.into()),
+                size: NonZero::new(bytes).expect("nonempty scute").into(),
+                verity: crate::artifact::ScuteVerity {
+                    digest: crate::artifact::Digest::Sha256(verity_digest.into()),
+                    data_blocks: data_blocks.into(),
+                    salt: salt.to_vec().try_into().expect("valid header salt"),
+                },
             },
         };
         Ok(SealedScute {
@@ -350,19 +352,19 @@ mod tests {
         assert_eq!(sealed.descriptor().size, blob.len() as u64);
         assert_eq!(
             sealed.descriptor().digest,
-            format!("sha256:{}", hex::encode(Sha256::digest(&blob)))
+            crate::artifact::Digest::Sha256(Sha256::digest(&blob).into())
         );
         let mut decoder = ruzstd::decoding::StreamingDecoder::new(blob.as_slice()).unwrap();
         let mut decoded = Vec::new();
         decoder.read_to_end(&mut decoded).unwrap();
         assert_eq!(decoded, plain);
         assert_eq!(
-            sealed.descriptor().annotations.digest.as_deref(),
-            Some(format!("sha256:{}", hex::encode(Sha256::digest(plain))).as_str())
+            sealed.descriptor().annotations.digest,
+            crate::artifact::Digest::Sha256(Sha256::digest(plain).into())
         );
         assert_eq!(
-            sealed.descriptor().annotations.size.as_deref(),
-            Some(plain.len().to_string().as_str())
+            sealed.descriptor().annotations.size.get(),
+            plain.len() as u64
         );
         blob
     }
@@ -397,14 +399,14 @@ mod tests {
             sealed.data_reader().read_to_end(&mut data).unwrap();
             assert_eq!(data, bytes);
             encoded_blob(&sealed, &bytes);
-            assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 2);
+            assert_eq!(sealed.descriptor().annotations.verity.data_blocks.get(), 2);
             let mut tree = vec![0; 8192];
             sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
             assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
             let file_digest = format!("sha256:{}", hex::encode(Sha256::digest(&tree)));
             assert_eq!(
-                sealed.descriptor().annotations.verity_digest.as_deref(),
-                Some(file_digest.as_str())
+                sealed.descriptor().annotations.verity.digest.to_string(),
+                file_digest.as_str()
             );
             assert_ne!(
                 file_digest,
@@ -414,7 +416,7 @@ mod tests {
             let salt = header.parameters.salt.as_ref();
             assert_eq!(salt.len(), 64);
             assert_eq!(&salt[..32], parent);
-            assert_eq!(sealed.descriptor().annotations.salt, hex::encode(salt));
+            assert_eq!(sealed.descriptor().annotations.verity.salt.as_ref(), salt);
             assert_eq!(header.parameters.data.count.get(), 2);
             for (index, block) in bytes.as_chunks::<4096>().0.iter().enumerate() {
                 let mut hash = Sha256::new();
@@ -435,8 +437,8 @@ mod tests {
             // Host mutation changes its output copy, never the expected identity.
             sealed.files().1.write_all_at(b"changed", 0).unwrap();
             assert_eq!(
-                sealed.descriptor().annotations.verity_digest.as_deref(),
-                Some(file_digest.as_str())
+                sealed.descriptor().annotations.verity.digest.to_string(),
+                file_digest.as_str()
             );
         }
         assert_ne!(salts[0][32..], salts[1][32..]);
@@ -480,7 +482,7 @@ mod tests {
         assert_eq!((entry.old_chunk, entry.new_chunk), (2, 2));
         assert!(packed[4112..].iter().all(|byte| *byte == 0));
         encoded_blob(&sealed, &packed);
-        assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 3);
+        assert_eq!(sealed.descriptor().annotations.verity.data_blocks.get(), 3);
         let mut header = [0; 512];
         sealed.files().1.read_exact_at(&mut header, 0).unwrap();
         assert_eq!(
@@ -525,8 +527,8 @@ mod tests {
         // One header, one root block, and two leaf hash blocks.
         assert_eq!(tree.len(), 4 * 4096);
         assert_eq!(
-            sealed.descriptor().annotations.verity_digest.as_deref(),
-            Some(format!("sha256:{}", hex::encode(Sha256::digest(&tree))).as_str())
+            sealed.descriptor().annotations.verity.digest.to_string(),
+            format!("sha256:{}", hex::encode(Sha256::digest(&tree))).as_str()
         );
         assert_eq!(std::fs::read_dir(control.path()).unwrap().count(), 0);
     }
@@ -762,8 +764,14 @@ mod tests {
         };
         let cache = Cache::open(directory.path()).unwrap();
         let requirements = serde_json::from_str(r#"{"memory":{"required":1024}}"#).unwrap();
-        let image =
-            AssembledImage::in_staging(&cache, &selection, Some(&requirements), staged).unwrap();
+        let image = AssembledImage::in_staging(
+            &cache,
+            &selection,
+            Some(&requirements),
+            crate::cache::tests::provenance(),
+            staged,
+        )
+        .unwrap();
         let config = image.image().manifest().config.clone();
         assert_eq!(
             image.image().manifest().carapace_root().unwrap(),
@@ -772,16 +780,7 @@ mod tests {
         drop(selection);
         image.publish().unwrap();
         assert_eq!(
-            std::fs::read(
-                output.join("blobs/sha256").join(
-                    config
-                        .digest
-                        .parse::<crate::artifact::Digest>()
-                        .unwrap()
-                        .hex()
-                )
-            )
-            .unwrap(),
+            std::fs::read(output.join("blobs/sha256").join(config.digest.hex())).unwrap(),
             br#"{"version":1,"requirements":{"slot":"mmio","memory":{"required":1024}}}"#
         );
         let index = std::fs::read(output.join("index.json")).unwrap();
@@ -813,7 +812,14 @@ mod tests {
                 pmi: None,
                 bootconfig: None,
             };
-            let assembled = AssembledImage::in_staging(&cache, &selection, None, staged).unwrap();
+            let assembled = AssembledImage::in_staging(
+                &cache,
+                &selection,
+                None,
+                crate::cache::tests::provenance(),
+                staged,
+            )
+            .unwrap();
             assert_eq!(
                 assembled.image().manifest().carapace_root().unwrap(),
                 Some(expected_root)

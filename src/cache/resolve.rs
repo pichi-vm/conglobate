@@ -43,7 +43,6 @@ impl HostArchitecture {
 pub(crate) struct ResolvedImage {
     manifest_bytes: VerifiedMetadata,
     manifest: Manifest,
-    architecture: HostArchitecture,
     root: Option<[u8; 32]>,
 }
 impl ResolvedImage {
@@ -57,9 +56,6 @@ impl ResolvedImage {
     }
     pub(crate) fn manifest(&self) -> &Manifest {
         &self.manifest
-    }
-    pub(crate) fn architecture(&self) -> HostArchitecture {
-        self.architecture
     }
 }
 impl Cache {
@@ -80,26 +76,20 @@ impl Cache {
         let manifest = image.manifest();
         let config = &manifest.config;
         if !config.is_empty() {
-            let digest = config
-                .digest
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid config digest"))?;
-            self.verify(&digest, config.size)?;
+            let digest = &config.digest;
+            self.verify(digest, config.size)?;
         }
         for layer in &manifest.layers {
-            let digest = layer
-                .digest_str()
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
+            let digest = layer.digest();
             if matches!(
                 layer,
                 crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
             ) {
-                if self.blob(&digest)?.metadata()?.len() != layer.size() {
+                if self.blob(digest)?.metadata()?.len() != layer.size() {
                     return Err(CacheError::Invalid("scute size mismatch"));
                 }
             } else {
-                self.verify(&digest, layer.size())?;
+                self.verify(digest, layer.size())?;
             }
         }
         Ok(())
@@ -140,16 +130,10 @@ impl Cache {
             .map_err(|_| CacheError::Invalid("invalid manifest digest"))?;
         let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
         let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
-        manifest.validate()?;
-        // The shared format validates artifact contents, not the OCI envelope.
-        if manifest.schema_version != 2 || manifest.media_type != MANIFEST {
-            return Err(CacheError::Invalid("invalid manifest envelope"));
-        }
         Ok(ResolvedImage {
             manifest_bytes,
             root: manifest.carapace_root()?,
             manifest,
-            architecture,
         })
     }
 }
@@ -187,6 +171,7 @@ mod tests {
     use super::*;
     use crate::artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
     use sha2::{Digest as _, Sha256};
+    use std::num::NonZero;
     use std::{collections::BTreeMap, fs};
 
     struct ContentFixture {
@@ -204,7 +189,9 @@ mod tests {
             for compressed in [false, true] {
                 let data = vec![7; if compressed { 4097 } else { 8192 }];
                 use crate::cache::tests::ScuteFixture as _;
-                let root = data.scute_root(parent);
+                let (_, tree, root) = data.scute_files(parent);
+                let data_digest = Digest::Sha256(Sha256::digest(&data).into());
+                let data_size = data.len();
                 let data_blocks =
                     std::num::NonZero::new((data.len() as u64).div_ceil(4096)).unwrap();
                 let bytes = if compressed {
@@ -214,14 +201,16 @@ mod tests {
                 };
                 let digest = Digest::Sha256(Sha256::digest(&bytes).into());
                 let descriptor = ScuteDescriptor {
-                    digest: digest.to_string(),
+                    digest: digest.clone(),
                     size: bytes.len() as u64,
                     annotations: ScuteAnnotations {
-                        digest: None,
-                        size: None,
-                        verity_digest: None,
-                        data_blocks,
-                        salt: hex::encode(parent),
+                        digest: data_digest,
+                        size: NonZero::new(data_size as u64).unwrap().into(),
+                        verity: crate::artifact::ScuteVerity {
+                            digest: Digest::Sha256(Sha256::digest(&tree).into()),
+                            data_blocks: data_blocks.into(),
+                            salt: parent.to_vec().try_into().unwrap(),
+                        },
                     },
                 };
                 layers.push(if compressed {
@@ -257,22 +246,27 @@ mod tests {
                 ("data-block-size", "4096"),
                 ("hash-block-size", "4096"),
                 ("version", "1"),
-                ("hash-type", "1"),
                 ("hash", &Digest::Sha256(parent).to_string()),
             ]
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))
+            .chain(
+                serde_json::from_value::<BTreeMap<String, String>>(
+                    serde_json::to_value(crate::cache::tests::provenance()).unwrap(),
+                )
+                .unwrap(),
+            )
             .collect();
             let manifest = Manifest {
                 schema_version: 2,
                 media_type: MANIFEST.into(),
                 artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::for_config(
-                    config_digest.to_string(),
+                    config_digest.clone(),
                     config.len() as u64,
                 ),
                 layers,
-                annotations,
+                annotations: annotations.try_into().unwrap(),
             };
             blobs.push((config_digest, config));
             for (digest, bytes) in &blobs {
@@ -284,13 +278,9 @@ mod tests {
             }
             let bytes = serde_json::to_vec(&manifest).unwrap();
             let image = ResolvedImage {
-                manifest_bytes: VerifiedMetadata {
-                    digest: Digest::Sha256(Sha256::digest(&bytes).into()),
-                    bytes,
-                },
+                manifest_bytes: VerifiedMetadata { bytes },
                 root: manifest.carapace_root().unwrap(),
                 manifest,
-                architecture: HostArchitecture::current().unwrap(),
             };
             Self {
                 directory,
@@ -347,8 +337,7 @@ mod tests {
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();
             let scute = fixture.image.manifest().layers.iter().any(|layer| {
-                matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_))
-                    && layer.digest_str() == digest.to_string()
+                matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_)) && layer.digest() == digest
             });
             assert_eq!(
                 cache.verify_metadata(&fixture.image).is_ok(),

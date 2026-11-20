@@ -2,10 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+use std::{fmt, str::FromStr};
 
 /// A document version encoded as the integer `V`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Version<const V: usize>;
+
+impl<const V: usize> fmt::Display for Version<V> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        V.fmt(formatter)
+    }
+}
+
+impl<const V: usize> FromStr for Version<V> {
+    type Err = &'static str;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text.parse::<usize>().ok() == Some(V) {
+            Ok(Self)
+        } else {
+            Err("unsupported version")
+        }
+    }
+}
 
 impl<const V: usize> Serialize for Version<V> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -49,6 +68,25 @@ mod tests {
         assert_eq!(serde_json::from_str::<Version<1>>("1").unwrap(), Version);
         for text in ["0", "2", "-1", "1.0", "\"1\"", "null", "[]", "{}"] {
             assert!(serde_json::from_str::<Version<1>>(text).is_err(), "{text}");
+        }
+    }
+
+    #[test]
+    fn annotation_strings_preserve_version_and_canonical_form() {
+        use crate::artifact::AsString;
+        assert_eq!(
+            serde_json::to_string(&AsString(Version::<1>)).unwrap(),
+            "\"1\""
+        );
+        assert_eq!(
+            serde_json::from_str::<AsString<Version<1>>>("\"1\"").unwrap(),
+            AsString(Version)
+        );
+        for text in ["\"0\"", "\"2\"", "\"01\"", "\"+1\"", "1", "null"] {
+            assert!(
+                serde_json::from_str::<AsString<Version<1>>>(text).is_err(),
+                "{text}"
+            );
         }
     }
 }

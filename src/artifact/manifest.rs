@@ -1,15 +1,13 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! `Manifest` typed schema (Phase 42 FORMAT-01..03). Per D-03, manifests
-//! are content-addressed JSON stored in the blob store; this type provides
-//! parse / serialise / validate / self-digest helpers.
-//!
-//! Phase 42 locks the schema: typed `layers: Vec<Layer>` (internally-
-//! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
-//! pattern, and `validate()` enforcing all six D-07 rules.
+//! OCI artifact manifests. Deserialization checks field encodings and structural
+//! invariants; consumers still authenticate blob contents and chain continuity.
 
-use super::{BootConfigDescriptor, Digest};
+#[cfg(test)]
+use super::AsString;
+use super::{BootConfigDescriptor, Digest, ManifestAnnotations, ScuteAnnotations};
+#[cfg(test)]
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -21,44 +19,35 @@ use crate::artifact::media_type::{
     MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
-/// Chain-wide verity parameters. Absent fields default to 4096-byte data/hash
-/// blocks, superblock version 1 and hash type 1. Producers omit default values.
-const CHAIN_ANNOTATION_VERITY_ALGO: &str = "dev.pichi.carapace.verity.algo";
-const CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.data-block-size";
-const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.hash-block-size";
-/// dm-verity superblock `version` and `hash_type` — reconstruction inputs that
-/// were previously hardcoded in the builder rather than conveyed.
-const CHAIN_ANNOTATION_VERITY_VERSION: &str = "dev.pichi.carapace.verity.version";
-const CHAIN_ANNOTATION_VERITY_HASH_TYPE: &str = "dev.pichi.carapace.verity.hash-type";
-
 /// Algorithm-qualified SHA-256 root of the final scute (sha256:<lowercase hex>).
 pub const CARAPACE_ROOT_ANNOTATION: &str = "dev.pichi.carapace.verity.hash";
 
 /// Canonical SHA-256 digest of `{}` (the OCI 1.1 empty config blob).
-const EMPTY_CONFIG_DIGEST: &str =
-    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
+const EMPTY_CONFIG_DIGEST: Digest = Digest::Sha256([
+    0x44, 0x13, 0x6f, 0xa3, 0x55, 0xb3, 0x67, 0x8a, 0x11, 0x46, 0xad, 0x16, 0xf7, 0xe8, 0x64, 0x9e,
+    0x94, 0xfb, 0x4f, 0xc2, 0x1f, 0xe7, 0x7e, 0x83, 0x10, 0xc0, 0x60, 0xf6, 0x1c, 0xaa, 0xff, 0x8a,
+]);
 /// Canonical base64 encoding of `{}` (used as inline `data` per OCI 1.1).
 const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 
 /// pichi OCI artifact manifest (OCI Image Spec 1.1).
 ///
-/// Schema invariants (per CONTEXT.md D-03 / D-07 — enforced by [`Manifest::validate`]):
+/// Deserialization checks these invariants. Call [`Manifest::validate`] after
+/// constructing or modifying a manifest in Rust:
 /// - Top-level `artifact_type` MUST equal [`MEDIA_TYPE_PICHI_ARTIFACT_V1`].
-/// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
+/// - `config` is either the canonical OCI empty config or a Pichi config blob.
 /// - Scute layers MUST appear in chain order, from base to tip.
 /// - At most ONE PMI, raw or compressed (D-03 — zero pmi = base/non-bootable, one pmi = bootable).
 /// - Top-level annotations MUST include one chain-tip root when scutes exist.
 ///   Reconstruction parameters are optional with defined defaults.
 /// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
 ///   parseable as hex (D-05 / D-07 rule 4-5).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Manifest {
     /// Always `2` for OCI 1.1.
     #[serde(rename = "schemaVersion")]
     pub schema_version: u32,
     /// OCI image manifest media type (`application/vnd.oci.image.manifest.v1+json`).
-    /// Carried as `String` (NOT `Option`) per D-03 — the pichi manifest is always
-    /// the OCI 1.1 image manifest envelope.
     #[serde(rename = "mediaType")]
     pub media_type: String,
     /// OCI 1.1 wrapper type. MUST be `MEDIA_TYPE_PICHI_ARTIFACT_V1` per D-07 rule 1.
@@ -71,13 +60,37 @@ pub struct Manifest {
     /// Typed layer descriptors. Scutes appear in base-to-tip chain order;
     /// PMI and boot configuration descriptors are outside that order.
     pub layers: Vec<Layer>,
-    /// Top-level annotations. With scutes, MUST include
+    /// Required build provenance and optional OCI metadata. With scutes, MUST include
     /// `dev.pichi.carapace.verity.hash`; parameters default to 4096-byte data/hash
     /// blocks, version 1 and hash type 1. SHOULD include
     /// `org.opencontainers.image.created` (D-06).
-    /// `BTreeMap` for byte-stable JSON serialisation (lexicographic key order).
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub annotations: BTreeMap<String, String>,
+    pub annotations: ManifestAnnotations,
+}
+
+impl<'de> Deserialize<'de> for Manifest {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Wire {
+            schema_version: u32,
+            media_type: String,
+            artifact_type: String,
+            config: ConfigDescriptor,
+            layers: Vec<Layer>,
+            annotations: ManifestAnnotations,
+        }
+        let wire = Wire::deserialize(deserializer)?;
+        let manifest = Self {
+            schema_version: wire.schema_version,
+            media_type: wire.media_type,
+            artifact_type: wire.artifact_type,
+            config: wire.config,
+            layers: wire.layers,
+            annotations: wire.annotations,
+        };
+        manifest.validate().map_err(serde::de::Error::custom)?;
+        Ok(manifest)
+    }
 }
 
 /// The manifest `config` descriptor. Either the OCI 1.1 empty config (inline
@@ -90,7 +103,7 @@ pub struct ConfigDescriptor {
     #[serde(rename = "mediaType")]
     pub media_type: String,
     /// SHA-256 digest of the config blob.
-    pub digest: String,
+    pub digest: Digest,
     /// Byte length of the config blob.
     pub size: u64,
     /// Base64-encoded inline blob (present for the empty config; omitted for a
@@ -104,7 +117,7 @@ impl ConfigDescriptor {
     pub fn canonical() -> Self {
         Self {
             media_type: MEDIA_TYPE_OCI_EMPTY_V1.to_string(),
-            digest: EMPTY_CONFIG_DIGEST.to_string(),
+            digest: EMPTY_CONFIG_DIGEST,
             size: 2,
             data: Some(EMPTY_CONFIG_DATA_BASE64.to_string()),
         }
@@ -112,7 +125,7 @@ impl ConfigDescriptor {
 
     /// A real config-blob descriptor (`vnd.pichi.config.v1+json`), referenced by
     /// digest; the blob is stored/moved separately.
-    pub fn for_config(digest: String, size: u64) -> Self {
+    pub fn for_config(digest: Digest, size: u64) -> Self {
         Self {
             media_type: MEDIA_TYPE_PICHI_CONFIG_V1.to_string(),
             digest,
@@ -205,8 +218,8 @@ pub enum Layer {
 }
 
 impl Layer {
-    /// Return the descriptor digest as a `&str` regardless of variant.
-    pub fn digest_str(&self) -> &str {
+    /// The content identity, regardless of layer encoding.
+    pub fn digest(&self) -> &Digest {
         match self {
             Self::Scute(d) | Self::ScuteZstd(d) => &d.digest,
             Self::Pmi(d) | Self::PmiZstd(d) => &d.digest,
@@ -251,98 +264,28 @@ impl Layer {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ScuteDescriptor {
     /// Content digest of the blob.
-    pub digest: String,
+    pub digest: Digest,
     /// Byte size of the blob.
     pub size: u64,
-    /// Per-scute annotations (D-05).
+    /// Per-scute annotations.
     pub annotations: ScuteAnnotations,
-}
-
-/// Per-scute annotations (D-05). The salt's prefix MUST equal the previous
-/// scute's verity root for non-base scutes (carapace salt-chain binding —
-/// not enforced here; chain validation is v0.9 Phase 46 carapace work).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ScuteAnnotations {
-    /// dm-verity header `data_blocks`: COW length rounded up to data blocks.
-    /// Required, positive, and encoded as a decimal annotation string.
-    #[serde(
-        rename = "dev.pichi.scute.verity.data-blocks",
-        serialize_with = "ScuteAnnotations::serialize_blocks",
-        deserialize_with = "ScuteAnnotations::deserialize_blocks"
-    )]
-    pub data_blocks: std::num::NonZeroU64,
-    /// Hex-encoded salt for this scute.
-    #[serde(rename = "dev.pichi.scute.verity.salt")]
-    pub salt: String,
-    /// SHA-256 of the exact decompressed bytes. Absent on older scutes.
-    #[serde(
-        rename = "dev.pichi.scute.digest",
-        default,
-        deserialize_with = "ScuteAnnotations::deserialize_identity",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub digest: Option<String>,
-    /// Exact decompressed byte count as a decimal annotation string.
-    #[serde(
-        rename = "dev.pichi.scute.size",
-        default,
-        deserialize_with = "ScuteAnnotations::deserialize_identity",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub size: Option<String>,
-    /// SHA-256 of the complete generated verity file, including its header
-    /// and padding. This is distinct from the verity root.
-    #[serde(
-        rename = "dev.pichi.scute.verity.digest",
-        default,
-        deserialize_with = "ScuteAnnotations::deserialize_identity",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub verity_digest: Option<String>,
-}
-
-impl ScuteAnnotations {
-    // Missing identities are compatible with old manifests; a supplied OCI
-    // annotation must still be a string, including when its value is null.
-    fn deserialize_identity<'de, D: serde::Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<Option<String>, D::Error> {
-        String::deserialize(deserializer).map(Some)
-    }
-
-    // OCI annotation values are strings; expose a typed length to callers.
-    fn serialize_blocks<S: serde::Serializer>(
-        blocks: &std::num::NonZeroU64,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        serializer.collect_str(blocks)
-    }
-
-    fn deserialize_blocks<'de, D: serde::Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<std::num::NonZeroU64, D::Error> {
-        let value = String::deserialize(deserializer)?;
-        if value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
-            return Err(serde::de::Error::custom(
-                "data_blocks must be an unsigned decimal string",
-            ));
-        }
-        value.parse().map_err(serde::de::Error::custom)
-    }
 }
 
 /// PMI layer descriptor. Digest and size identify the encoded blob bytes.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PmiDescriptor {
     /// Content digest of the PMI blob.
-    pub digest: String,
+    pub digest: Digest,
     /// Byte size of the PMI blob.
     pub size: u64,
 }
 
-/// Validation errors for [`Manifest::validate`] (per D-07).
+/// Structural validation errors, also reported during manifest deserialization.
 #[derive(Debug, Error)]
 pub enum ManifestValidationError {
+    /// Only the OCI image-manifest v2 envelope is supported.
+    #[error("invalid manifest envelope: expected OCI image manifest schemaVersion 2")]
+    BadEnvelope,
     /// D-07 rule 1: wrong `artifactType`.
     #[error("artifactType must be {expected}, got {actual}")]
     WrongArtifactType {
@@ -363,9 +306,7 @@ pub enum ManifestValidationError {
     /// D-07 rule 3: required chain annotation key is absent.
     #[error("missing required chain annotation: {0}")]
     MissingChainAnnotation(&'static str),
-    /// A chain annotation is present but malformed (e.g. non-integer
-    /// version/hash-type). This is a well-formedness check only — pichi imposes
-    /// no value whitelist (that is the guest consumer's control per the spec).
+    /// A chain root is zero or appears in a manifest without scutes.
     #[error("chain annotation {key} is malformed: {value}")]
     BadChainAnnotation {
         /// The annotation key.
@@ -385,13 +326,9 @@ pub enum ManifestValidationError {
     #[error("boot configuration requires a PMI")]
     BootConfigWithoutPmi,
 
-    /// Scute salt is not valid hex or lacks the 32-byte parent root prefix.
-    #[error("scute salt must contain a hex-encoded parent root: {0}")]
-    BadSalt(String),
-
     /// The first scute must be the base; later scutes must have a parent.
     #[error("scutes must appear in base-to-tip order: {0}")]
-    BadScuteOrder(String),
+    BadScuteOrder(Digest),
 
     /// A supplied content identity is malformed or contradicts scute geometry.
     #[error("scute annotation {key} is malformed: {value}")]
@@ -404,46 +341,27 @@ pub enum ManifestValidationError {
 
     /// Declared data-block count is zero or contradicts a raw blob's size.
     #[error("invalid data-block count for scute {0}")]
-    BadScuteBlocks(String),
+    BadScuteBlocks(Digest),
 }
 
 impl Manifest {
     /// The chain-tip commitment, present exactly when this artifact has scutes.
-    /// This parses the wire value; consumers must authenticate the manifest and
+    /// Consumers must authenticate the manifest and
     /// verify scute reads against this root before using their contents.
     pub fn carapace_root(&self) -> Result<Option<[u8; 32]>, ManifestValidationError> {
-        let value = self.annotations.get(CARAPACE_ROOT_ANNOTATION);
-        if !self.has_scutes() && value.is_none() {
-            return Ok(None);
-        }
-        let value = value.ok_or(ManifestValidationError::MissingChainAnnotation(
-            CARAPACE_ROOT_ANNOTATION,
-        ))?;
-        // Legacy images use bare roots plus an explicit algorithm.
-        // New output uses only the qualified form; never accept two declarations.
-        let wire = match (
-            value.contains(':'),
-            self.annotations
-                .get(CHAIN_ANNOTATION_VERITY_ALGO)
-                .map(String::as_str),
-        ) {
-            (true, None) => value.clone(),
-            (false, Some("sha256")) => format!("sha256:{value}"),
-            _ => {
-                return Err(ManifestValidationError::BadChainAnnotation {
-                    key: CARAPACE_ROOT_ANNOTATION,
-                    value: value.clone(),
-                });
+        match (self.annotations.verity.root.as_ref(), self.has_scutes()) {
+            (None, false) => Ok(None),
+            (None, true) => Err(ManifestValidationError::MissingChainAnnotation(
+                CARAPACE_ROOT_ANNOTATION,
+            )),
+            (Some(root), true) if root.as_sha256_array() != [0; 32] => {
+                Ok(Some(root.as_sha256_array()))
             }
-        };
-        let root = wire.parse::<Digest>().ok().filter(|digest| {
-            self.has_scutes() && digest.to_string() == wire && digest.as_sha256_array() != [0; 32]
-        });
-        let root = root.ok_or_else(|| ManifestValidationError::BadChainAnnotation {
-            key: CARAPACE_ROOT_ANNOTATION,
-            value: value.clone(),
-        })?;
-        Ok(Some(root.as_sha256_array()))
+            (Some(root), _) => Err(ManifestValidationError::BadChainAnnotation {
+                key: CARAPACE_ROOT_ANNOTATION,
+                value: root.to_string(),
+            }),
+        }
     }
 
     /// Return `true` if this manifest carries at least one scute layer (i.e.
@@ -461,6 +379,9 @@ impl Manifest {
     /// # Errors
     /// Returns the first violated rule — does NOT collect all errors.
     pub fn validate(&self) -> Result<(), ManifestValidationError> {
+        if self.schema_version != 2 || self.media_type != super::MEDIA_TYPE_OCI_MANIFEST_V1 {
+            return Err(ManifestValidationError::BadEnvelope);
+        }
         // Rule 1: artifactType
         if self.artifact_type != MEDIA_TYPE_PICHI_ARTIFACT_V1 {
             return Err(ManifestValidationError::WrongArtifactType {
@@ -484,22 +405,6 @@ impl Manifest {
         // The chain root is required for scutes; reconstruction overrides
         // are optional. Consumers decide which well-formed values they support.
         self.carapace_root()?;
-        if self.has_scutes() {
-            for key in [
-                CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
-                CHAIN_ANNOTATION_VERITY_VERSION,
-                CHAIN_ANNOTATION_VERITY_HASH_TYPE,
-            ] {
-                if let Some(value) = self.annotations.get(key)
-                    && value.parse::<u32>().is_err()
-                {
-                    return Err(ManifestValidationError::BadChainAnnotation {
-                        key,
-                        value: value.clone(),
-                    });
-                }
-            }
-        }
         // Rule 5 (out of order — bail early on count): at most one PMI
         let pmi_count = self
             .layers
@@ -529,63 +434,30 @@ impl Manifest {
             let (Layer::Scute(d) | Layer::ScuteZstd(d)) = layer else {
                 continue;
             };
-            let blocks = d.annotations.data_blocks.get();
-            let value = self
-                .annotations
-                .get(CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE)
-                .map(String::as_str)
-                .unwrap_or("4096");
-            let block_size = value
-                .parse::<u32>()
-                .ok()
-                .filter(|size| *size != 0)
-                .ok_or_else(|| ManifestValidationError::BadChainAnnotation {
-                    key: CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
-                    value: value.into(),
-                })?;
+            let blocks = d.annotations.verity.data_blocks.get();
+            let block_size = self.annotations.verity.data_block_size.bytes().get();
             if blocks.checked_mul(u64::from(block_size)).is_none()
                 || (matches!(layer, Layer::Scute(_))
                     && blocks != d.size.div_ceil(u64::from(block_size)))
             {
                 return Err(ManifestValidationError::BadScuteBlocks(d.digest.clone()));
             }
-            for (key, value) in [
-                ("dev.pichi.scute.digest", &d.annotations.digest),
-                (
-                    "dev.pichi.scute.verity.digest",
-                    &d.annotations.verity_digest,
-                ),
-            ] {
-                if let Some(value) = value
-                    && !value
-                        .parse::<Digest>()
-                        .is_ok_and(|digest| digest.to_string() == *value)
-                {
-                    return Err(ManifestValidationError::BadScuteAnnotation {
-                        key,
-                        value: value.clone(),
-                    });
-                }
-            }
-            if let Some(value) = &d.annotations.size {
-                let size = value.parse::<u64>().ok().filter(|size| {
-                    *size != 0
-                        && size.to_string() == *value
-                        && size.div_ceil(u64::from(block_size)) == blocks
-                        && (!matches!(layer, Layer::Scute(_)) || *size == d.size)
+            if matches!(layer, Layer::Scute(_)) && d.annotations.digest != d.digest {
+                return Err(ManifestValidationError::BadScuteAnnotation {
+                    key: "dev.pichi.scute.digest",
+                    value: d.annotations.digest.to_string(),
                 });
-                if size.is_none() {
-                    return Err(ManifestValidationError::BadScuteAnnotation {
-                        key: "dev.pichi.scute.size",
-                        value: value.clone(),
-                    });
-                }
             }
-            let salt = hex::decode(&d.annotations.salt)
-                .map_err(|_| ManifestValidationError::BadSalt(d.annotations.salt.clone()))?;
-            let parent = salt
-                .get(..32)
-                .ok_or_else(|| ManifestValidationError::BadSalt(d.annotations.salt.clone()))?;
+            let size = d.annotations.size.get();
+            if size.div_ceil(u64::from(block_size)) != blocks
+                || (matches!(layer, Layer::Scute(_)) && size != d.size)
+            {
+                return Err(ManifestValidationError::BadScuteAnnotation {
+                    key: "dev.pichi.scute.size",
+                    value: size.to_string(),
+                });
+            }
+            let parent = &d.annotations.verity.salt.as_ref()[..32];
             if first_scute != parent.iter().all(|byte| *byte == 0) {
                 return Err(ManifestValidationError::BadScuteOrder(d.digest.clone()));
             }
@@ -601,12 +473,19 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::num::NonZero;
+
+    const CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE: &str =
+        "dev.pichi.carapace.verity.data-block-size";
+    const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str =
+        "dev.pichi.carapace.verity.hash-block-size";
+    const CHAIN_ANNOTATION_VERITY_VERSION: &str = "dev.pichi.carapace.verity.version";
     use sha2::{Digest as _, Sha256};
 
     #[test]
     fn pmi_encodings_share_cardinality_and_bootconfig_rules() {
         let descriptor = PmiDescriptor {
-            digest: format!("sha256:{}", "12".repeat(32)),
+            digest: Digest::Sha256([0x12; 32]),
             size: 73,
         };
         let variants = [Layer::Pmi(descriptor.clone()), Layer::PmiZstd(descriptor)];
@@ -624,13 +503,13 @@ mod tests {
                 let mut manifest = sample_base_manifest();
                 if !root {
                     manifest.layers.clear();
-                    manifest.annotations.clear();
+                    manifest.annotations = sample_build_annotations().try_into().unwrap();
                 }
                 manifest.layers.push(encoded.clone());
                 manifest
                     .layers
                     .push(Layer::BootConfig(BootConfigDescriptor {
-                        digest: format!("sha256:{}", "34".repeat(32)),
+                        digest: Digest::Sha256([0x34; 32]),
                         size: 12,
                     }));
                 manifest.validate().unwrap();
@@ -649,7 +528,7 @@ mod tests {
     #[test]
     fn boot_config_is_a_compressed_component_requiring_one_pmi() {
         let config = Layer::BootConfig(BootConfigDescriptor {
-            digest: format!("sha256:{}", "34".repeat(32)),
+            digest: Digest::Sha256([0x34; 32]),
             size: 73,
         });
         let json = serde_json::to_value(&config).unwrap();
@@ -666,7 +545,7 @@ mod tests {
             let mut manifest = sample_base_manifest();
             if !root {
                 manifest.layers.clear();
-                manifest.annotations.clear();
+                manifest.annotations = sample_build_annotations().try_into().unwrap();
             }
             manifest.layers.push(config.clone());
             assert!(matches!(
@@ -674,7 +553,7 @@ mod tests {
                 Err(ManifestValidationError::BootConfigWithoutPmi)
             ));
             manifest.layers.push(Layer::Pmi(PmiDescriptor {
-                digest: format!("sha256:{}", "12".repeat(32)),
+                digest: Digest::Sha256([0x12; 32]),
                 size: 4096,
             }));
             manifest.validate().unwrap();
@@ -688,46 +567,36 @@ mod tests {
 
     #[test]
     fn data_blocks_is_a_required_positive_decimal_annotation() {
-        assert!(
-            serde_json::from_str::<ScuteAnnotations>(r#"{"dev.pichi.scute.verity.salt":"00"}"#)
-                .is_err()
-        );
         let annotations = ScuteAnnotations {
-            digest: None,
-            size: None,
-            verity_digest: None,
-            salt: "00".into(),
-            data_blocks: 2u64.try_into().unwrap(),
+            digest: Digest::Sha256([0x11; 32]),
+            size: NonZero::new(1024).unwrap().into(),
+            verity: crate::artifact::ScuteVerity {
+                digest: Digest::Sha256([0x22; 32]),
+                salt: vec![0; 32].try_into().unwrap(),
+                data_blocks: NonZero::new(2).unwrap().into(),
+            },
         };
         let json = serde_json::to_value(&annotations).unwrap();
+        let mut missing = json.clone();
+        missing
+            .as_object_mut()
+            .unwrap()
+            .remove("dev.pichi.scute.verity.data-blocks");
+        assert!(serde_json::from_value::<ScuteAnnotations>(missing).is_err());
         assert_eq!(json["dev.pichi.scute.verity.data-blocks"], "2");
         assert_eq!(
             serde_json::from_value::<ScuteAnnotations>(json.clone()).unwrap(),
             annotations
         );
-        for invalid in [
-            serde_json::json!(4097),
-            serde_json::json!(""),
-            serde_json::json!("0"),
-            serde_json::json!("-1"),
-            serde_json::json!("+1"),
-            serde_json::json!("18446744073709551616"),
-            serde_json::Value::Null,
-        ] {
-            let mut json = json.clone();
-            json["dev.pichi.scute.verity.data-blocks"] = invalid;
-            assert!(serde_json::from_value::<ScuteAnnotations>(json).is_err());
-        }
     }
 
     #[test]
-    fn content_identities_are_optional_string_annotations() {
+    fn content_identities_are_required_string_annotations() {
         let legacy = serde_json::json!({
             "dev.pichi.scute.verity.data-blocks": "2",
             "dev.pichi.scute.verity.salt": "00".repeat(32),
         });
-        let annotations: ScuteAnnotations = serde_json::from_value(legacy.clone()).unwrap();
-        assert_eq!(serde_json::to_value(annotations).unwrap(), legacy);
+        assert!(serde_json::from_value::<ScuteAnnotations>(legacy.clone()).is_err());
         let mut current = legacy;
         current["dev.pichi.scute.digest"] = format!("sha256:{}", "12".repeat(32)).into();
         current["dev.pichi.scute.size"] = "8192".into();
@@ -739,6 +608,9 @@ mod tests {
             "dev.pichi.scute.size",
             "dev.pichi.scute.verity.digest",
         ] {
+            let mut missing = current.clone();
+            missing.as_object_mut().unwrap().remove(key);
+            assert!(serde_json::from_value::<ScuteAnnotations>(missing).is_err());
             for value in [serde_json::json!(8192), serde_json::Value::Null] {
                 let mut invalid = current.clone();
                 invalid[key] = value;
@@ -753,59 +625,34 @@ mod tests {
         let Layer::Scute(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        scute.annotations.digest = Some(format!("sha256:{}", "12".repeat(32)));
-        scute.annotations.size = Some(scute.size.to_string());
-        scute.annotations.verity_digest = Some(format!("sha256:{}", "34".repeat(32)));
+        scute.annotations.digest = scute.digest.clone();
+        scute.annotations.size = NonZero::new(scute.size).unwrap().into();
+        scute.annotations.verity.digest = Digest::Sha256([0x34; 32]);
         manifest.validate().unwrap();
         let original = manifest.layers[0].clone();
-        for field in ["digest", "verity_digest"] {
-            for value in [
-                "sha256:abcd".into(),
-                format!("sha512:{}", "12".repeat(32)),
-                format!("sha256:{}", "AB".repeat(32)),
-            ] {
-                let Layer::Scute(scute) = &mut manifest.layers[0] else {
-                    unreachable!()
-                };
-                if field == "digest" {
-                    scute.annotations.digest = Some(value);
-                } else {
-                    scute.annotations.verity_digest = Some(value);
-                }
-                assert!(matches!(
-                    manifest.validate(),
-                    Err(ManifestValidationError::BadScuteAnnotation { .. })
-                ));
-                manifest.layers[0] = original.clone();
-            }
-        }
-        for value in [
-            "0",
-            "-1",
-            "+1024",
-            "01024",
-            "1023",
-            "1025",
-            "18446744073709551616",
-        ] {
-            let Layer::Scute(scute) = &mut manifest.layers[0] else {
-                unreachable!()
-            };
-            scute.annotations.size = Some(value.into());
-            assert!(
-                matches!(
-                    manifest.validate(),
-                    Err(ManifestValidationError::BadScuteAnnotation { .. })
-                ),
-                "{value}"
-            );
+        let Layer::Scute(scute) = &mut manifest.layers[0] else {
+            unreachable!()
+        };
+        scute.annotations.digest = Digest::Sha256([0xff; 32]);
+        assert!(matches!(
+            manifest.validate(),
+            Err(ManifestValidationError::BadScuteAnnotation {
+                key: "dev.pichi.scute.digest",
+                ..
+            })
+        ));
+        manifest.layers[0] = original.clone();
+        for size in [1023, 1025] {
+            let mut json = serde_json::to_value(&manifest).unwrap();
+            json["layers"][0]["annotations"]["dev.pichi.scute.size"] = size.to_string().into();
+            assert!(serde_json::from_value::<Manifest>(json).is_err());
         }
         let Layer::Scute(mut compressed) = original else {
             unreachable!()
         };
         compressed.size = 100;
         // Existing format permits a partial final block in inherited scutes.
-        compressed.annotations.size = Some("1023".into());
+        compressed.annotations.size = NonZero::new(1023).unwrap().into();
         manifest.layers[0] = Layer::ScuteZstd(compressed);
         manifest.validate().unwrap();
     }
@@ -817,28 +664,41 @@ mod tests {
             let Layer::Scute(scute) = &mut manifest.layers[0] else {
                 unreachable!()
             };
-            scute.annotations.data_blocks = blocks.try_into().unwrap();
+            scute.annotations.verity.data_blocks = NonZero::new(blocks).unwrap().into();
             assert_eq!(manifest.validate().is_ok(), blocks == 1);
         }
         let mut manifest = sample_base_manifest();
         let Layer::Scute(mut scute) = manifest.layers.remove(0) else {
             unreachable!()
         };
-        scute.annotations.data_blocks = 2u64.try_into().unwrap();
+        scute.annotations.verity.data_blocks = NonZero::new(2).unwrap().into();
+        scute.annotations.size = NonZero::new(8192).unwrap().into();
         manifest.layers.push(Layer::ScuteZstd(scute));
         assert!(manifest.validate().is_ok());
         let Layer::ScuteZstd(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        scute.annotations.data_blocks = u64::MAX.try_into().unwrap();
+        scute.annotations.verity.data_blocks = NonZero::new(u64::MAX).unwrap().into();
         assert!(matches!(
             manifest.validate(),
             Err(ManifestValidationError::BadScuteBlocks(_))
         ));
     }
 
+    fn sample_build_annotations() -> BTreeMap<String, String> {
+        [
+            (
+                "dev.pichi.build.commit".into(),
+                format!("sha1:{}", "12".repeat(20)),
+            ),
+            ("dev.pichi.build.context".into(), ".".into()),
+            ("dev.pichi.build.plan".into(), "plan.yaml".into()),
+        ]
+        .into()
+    }
+
     fn sample_chain_annotations() -> BTreeMap<String, String> {
-        let mut a = BTreeMap::new();
+        let mut a = sample_build_annotations();
         a.insert(
             CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE.into(),
             "4096".into(),
@@ -848,7 +708,6 @@ mod tests {
             "4096".into(),
         );
         a.insert(CHAIN_ANNOTATION_VERITY_VERSION.into(), "1".into());
-        a.insert(CHAIN_ANNOTATION_VERITY_HASH_TYPE.into(), "1".into());
         a.insert(
             CARAPACE_ROOT_ANNOTATION.into(),
             format!("sha256:{}", "ab".repeat(32)),
@@ -867,19 +726,28 @@ mod tests {
             artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
             config: ConfigDescriptor::canonical(),
             layers: vec![Layer::Scute(ScuteDescriptor {
-                digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
-                    .into(),
+                digest: Digest::Sha256([0x11; 32]),
                 size: 1024,
                 annotations: ScuteAnnotations {
-                    digest: None,
-                    size: None,
-                    verity_digest: None,
-                    data_blocks: 1u64.try_into().unwrap(),
-                    salt: "00".repeat(32),
+                    digest: Digest::Sha256([0x11; 32]),
+                    size: NonZero::new(1024).unwrap().into(),
+                    verity: crate::artifact::ScuteVerity {
+                        digest: Digest::Sha256([0x22; 32]),
+                        data_blocks: NonZero::new(1).unwrap().into(),
+                        salt: vec![0; 32].try_into().unwrap(),
+                    },
                 },
             })],
-            annotations: sample_chain_annotations(),
+            annotations: sample_chain_annotations().try_into().unwrap(),
         }
+    }
+
+    #[test]
+    fn deserialization_checks_manifest_relationships() {
+        let mut json = serde_json::to_value(sample_base_manifest()).unwrap();
+        json["layers"][0]["annotations"]["dev.pichi.scute.digest"] =
+            serde_json::to_value(Digest::Sha256([0xff; 32])).unwrap();
+        assert!(serde_json::from_value::<Manifest>(json).is_err());
     }
 
     #[test]
@@ -908,7 +776,7 @@ mod tests {
         assert_eq!(c.data.as_deref(), Some("e30="));
         assert_eq!(c.digest, EMPTY_CONFIG_DIGEST);
         // Cross-check: SHA-256 of "{}" really is the EMPTY_CONFIG_DIGEST hex
-        let manual = crate::artifact::Digest::Sha256(Sha256::digest(b"{}").into()).to_string();
+        let manual = Digest::Sha256(Sha256::digest(b"{}").into());
         assert_eq!(manual, EMPTY_CONFIG_DIGEST);
     }
 
@@ -921,8 +789,7 @@ mod tests {
     fn validate_accepts_bootable_image_with_one_pmi() {
         let mut m = sample_base_manifest();
         m.layers.push(Layer::Pmi(PmiDescriptor {
-            digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-                .into(),
+            digest: Digest::Sha256([0x22; 32]),
             size: 4096,
         }));
         m.validate().unwrap();
@@ -952,34 +819,29 @@ mod tests {
     #[test]
     fn validate_accepts_real_config_blob() {
         let mut m = sample_base_manifest();
-        m.config = ConfigDescriptor::for_config(
-            "sha256:5555555555555555555555555555555555555555555555555555555555555555".into(),
-            42,
-        );
+        m.config = ConfigDescriptor::for_config(Digest::Sha256([0x55; 32]), 42);
         m.validate().unwrap();
     }
 
     #[test]
     fn validate_accepts_omitted_and_partial_verity_defaults() {
-        let mut m = sample_base_manifest();
+        let mut json = serde_json::to_value(sample_base_manifest()).unwrap();
         for key in [
             CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
             CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
             CHAIN_ANNOTATION_VERITY_VERSION,
-            CHAIN_ANNOTATION_VERITY_HASH_TYPE,
         ] {
-            m.annotations.remove(key);
-            m.validate().unwrap();
+            json["annotations"].as_object_mut().unwrap().remove(key);
+            serde_json::from_value::<Manifest>(json.clone()).unwrap();
         }
+        let mut m: Manifest = serde_json::from_value(json).unwrap();
         assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
-        m.annotations.insert(
-            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE.into(),
-            "2048".into(),
-        );
+        m.annotations.verity.data_block_size = AsString("2048".parse().unwrap());
         let Layer::Scute(scute) = &mut m.layers[0] else {
             unreachable!()
         };
-        scute.annotations.data_blocks = scute.size.div_ceil(2048).try_into().unwrap();
+        scute.annotations.verity.data_blocks =
+            NonZero::new(scute.size.div_ceil(2048)).unwrap().into();
         m.validate().unwrap();
     }
 
@@ -988,26 +850,13 @@ mod tests {
         let mut m = sample_base_manifest();
         for _ in 0..2 {
             m.layers.push(Layer::Pmi(PmiDescriptor {
-                digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-                    .into(),
+                digest: Digest::Sha256([0x00; 32]),
                 size: 1,
             }));
         }
         assert!(matches!(
             m.validate().unwrap_err(),
             ManifestValidationError::MultiplePmi(2)
-        ));
-    }
-
-    #[test]
-    fn validate_rejects_non_hex_salt() {
-        let mut m = sample_base_manifest();
-        if let Layer::Scute(d) = &mut m.layers[0] {
-            d.annotations.salt = "ZZZZ".into();
-        }
-        assert!(matches!(
-            m.validate().unwrap_err(),
-            ManifestValidationError::BadSalt(_)
         ));
     }
 
@@ -1021,12 +870,12 @@ mod tests {
         let Layer::Scute(base) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        base.annotations.salt.push_str("abcd");
-        child.annotations.salt = "ab".repeat(32);
+        base.annotations.verity.salt = [vec![0; 32], vec![0xab, 0xcd]].concat().try_into().unwrap();
+        child.annotations.verity.salt = vec![0xab; 32].try_into().unwrap();
         manifest.layers.insert(
             0,
             Layer::Pmi(PmiDescriptor {
-                digest: format!("sha256:{}", "44".repeat(32)),
+                digest: Digest::Sha256([0x44; 32]),
                 size: 8192,
             }),
         );
@@ -1048,66 +897,15 @@ mod tests {
 
     #[test]
     fn scute_salts_must_contain_a_complete_parent_root() {
-        for salt in [String::new(), "00".repeat(31)] {
-            let mut manifest = sample_base_manifest();
-            let Layer::Scute(base) = &mut manifest.layers[0] else {
-                unreachable!()
-            };
-            base.annotations.salt = salt;
-            assert!(matches!(
-                manifest.validate(),
-                Err(ManifestValidationError::BadSalt(_))
-            ));
-        }
-    }
-
-    #[test]
-    fn legacy_roots_require_an_explicit_supported_algorithm() {
-        let mut manifest = sample_base_manifest();
-        manifest
-            .annotations
-            .insert(CARAPACE_ROOT_ANNOTATION.into(), "ab".repeat(32));
-        manifest
-            .annotations
-            .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), "sha256".into());
-        assert_eq!(manifest.carapace_root().unwrap(), Some([0xab; 32]));
-        manifest.validate().unwrap();
-        for algorithm in ["", "sha512", "SHA256"] {
-            manifest
-                .annotations
-                .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), algorithm.into());
-            assert!(manifest.validate().is_err());
-        }
-        manifest
-            .annotations
-            .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), "sha256".into());
-        for value in [
-            "00".repeat(32),
-            "gg".repeat(32),
-            "AB".repeat(32),
-            "ab".repeat(33),
+        for salt in [
+            String::new(),
+            "00".repeat(31),
+            "00".repeat(257),
+            "ZZZZ".into(),
         ] {
-            manifest
-                .annotations
-                .insert(CARAPACE_ROOT_ANNOTATION.into(), value);
-            assert!(manifest.validate().is_err());
-        }
-    }
-
-    #[test]
-    fn validate_rejects_retired_algorithm_annotation() {
-        for algorithm in ["sha256", "sha512", ""] {
-            let mut manifest = sample_base_manifest();
-            manifest
-                .annotations
-                .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), algorithm.into());
-            assert!(matches!(
-                manifest.validate(),
-                Err(ManifestValidationError::BadChainAnnotation {
-                    key: CARAPACE_ROOT_ANNOTATION,
-                    ..
-                })
-            ));
+            let mut json = serde_json::to_value(sample_base_manifest()).unwrap();
+            json["layers"][0]["annotations"]["dev.pichi.scute.verity.salt"] = salt.into();
+            assert!(serde_json::from_value::<Manifest>(json).is_err());
         }
     }
 
@@ -1115,81 +913,52 @@ mod tests {
     fn validate_requires_one_nonzero_chain_tip() {
         let mut m = sample_base_manifest();
         assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
-        m.annotations.remove(CARAPACE_ROOT_ANNOTATION);
+        let verity = m.annotations.verity.root.take();
         assert!(matches!(
             m.validate(),
             Err(ManifestValidationError::MissingChainAnnotation(
                 CARAPACE_ROOT_ANNOTATION
             ))
         ));
-        for invalid in [
-            "".into(),
-            "deadbeef".into(),
-            "gg".repeat(32),
-            "00".repeat(32),
-            "ab".repeat(33),
-            "ab".repeat(32),
-            format!("sha256:{}", "gg".repeat(32)),
-            format!("sha256:{}", "00".repeat(32)),
-            format!("sha512:{}", "ab".repeat(32)),
-            format!("sha256:{}", "AB".repeat(32)),
-            format!("sha256:{}", "ab".repeat(33)),
-        ] {
-            m.annotations
-                .insert(CARAPACE_ROOT_ANNOTATION.into(), invalid);
-            assert!(matches!(
-                m.validate(),
-                Err(ManifestValidationError::BadChainAnnotation {
-                    key: CARAPACE_ROOT_ANNOTATION,
-                    ..
-                })
-            ));
-        }
-        m.annotations.insert(
-            CARAPACE_ROOT_ANNOTATION.into(),
-            format!("sha256:{}", "ab".repeat(32)),
-        );
+        m.annotations.verity.root = Some(Digest::Sha256([0; 32]));
+        assert!(m.validate().is_err());
+        m.annotations.verity.root = verity;
         m.validate().unwrap();
         m.layers.clear();
         assert!(m.validate().is_err());
-        m.annotations.clear();
+        m.annotations = sample_build_annotations().try_into().unwrap();
         m.validate().unwrap();
         assert_eq!(m.carapace_root().unwrap(), None);
     }
 
     #[test]
-    fn validate_rejects_malformed_optional_parameters() {
-        for key in [
-            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
-            CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
-            CHAIN_ANNOTATION_VERITY_VERSION,
-            CHAIN_ANNOTATION_VERITY_HASH_TYPE,
-        ] {
-            for value in ["", "invalid", "-1", "4294967296"] {
-                let mut m = sample_base_manifest();
-                m.annotations.insert(key.into(), value.into());
-                assert!(matches!(
-                    m.validate(),
-                    Err(ManifestValidationError::BadChainAnnotation { .. })
-                ));
-            }
-        }
-    }
-
-    #[test]
-    fn validate_rejects_malformed_verity_version() {
-        // Well-formedness only: non-integer version is rejected (but any integer
-        // is accepted — pichi imposes no value whitelist).
-        let mut m = sample_base_manifest();
-        m.annotations.insert(
-            CHAIN_ANNOTATION_VERITY_VERSION.into(),
-            "not-a-number".into(),
+    fn verity_annotations_are_flat_and_typed() {
+        let mut json = serde_json::to_value(sample_build_annotations()).unwrap();
+        json["dev.pichi.carapace.verity.hash"] =
+            serde_json::to_value(Digest::Sha256([0xab; 32])).unwrap();
+        json["dev.pichi.carapace.verity.data-block-size"] = "4096".into();
+        json["dev.pichi.carapace.verity.hash-block-size"] = "8192".into();
+        json["example.org/source"] = "ignored".into();
+        let annotations: ManifestAnnotations = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(annotations.verity.data_block_size.bytes().get(), 4096);
+        assert_eq!(annotations.verity.hash_block_size.bytes().get(), 8192);
+        let encoded = serde_json::to_value(annotations).unwrap();
+        assert!(encoded.get("example.org/source").is_none());
+        assert!(
+            encoded
+                .get("dev.pichi.carapace.verity.data-block-size")
+                .is_none()
         );
-        assert!(matches!(
-            m.validate().unwrap_err(),
-            ManifestValidationError::BadChainAnnotation { key, .. }
-                if key == CHAIN_ANNOTATION_VERITY_VERSION
-        ));
+        for (key, value) in [
+            (CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE, "0"),
+            (CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE, "513"),
+            (CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE, "1048576"),
+            (CHAIN_ANNOTATION_VERITY_VERSION, "2"),
+        ] {
+            let mut invalid = json.clone();
+            invalid[key] = value.into();
+            assert!(serde_json::from_value::<ManifestAnnotations>(invalid).is_err());
+        }
     }
 
     #[test]
@@ -1199,11 +968,10 @@ mod tests {
         let mut m = sample_base_manifest();
         m.layers.clear();
         m.layers.push(Layer::Pmi(PmiDescriptor {
-            digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-                .into(),
+            digest: Digest::Sha256([0x22; 32]),
             size: 4096,
         }));
-        m.annotations.clear();
+        m.annotations = sample_build_annotations().try_into().unwrap();
         m.validate().unwrap();
     }
 
@@ -1223,18 +991,20 @@ mod tests {
     #[test]
     fn pichi_layer_is_zstd_variant() {
         let scute_desc = ScuteDescriptor {
-            digest: "sha256:dead".into(),
+            digest: Digest::Sha256([0xde; 32]),
             size: 0,
             annotations: ScuteAnnotations {
-                digest: None,
-                size: None,
-                verity_digest: None,
-                data_blocks: 1u64.try_into().unwrap(),
-                salt: "deadbeef".into(),
+                digest: Digest::Sha256([0x11; 32]),
+                size: NonZero::new(1024).unwrap().into(),
+                verity: crate::artifact::ScuteVerity {
+                    digest: Digest::Sha256([0x22; 32]),
+                    data_blocks: NonZero::new(1).unwrap().into(),
+                    salt: vec![0; 32].try_into().unwrap(),
+                },
             },
         };
         let pmi_desc = PmiDescriptor {
-            digest: "sha256:beef".into(),
+            digest: Digest::Sha256([0xbe; 32]),
             size: 0,
         };
         assert!(!Layer::Scute(scute_desc.clone()).is_zstd_variant());
@@ -1245,18 +1015,20 @@ mod tests {
     #[test]
     fn pichi_layer_media_type_str() {
         let scute_desc = ScuteDescriptor {
-            digest: "sha256:dead".into(),
+            digest: Digest::Sha256([0xde; 32]),
             size: 0,
             annotations: ScuteAnnotations {
-                digest: None,
-                size: None,
-                verity_digest: None,
-                data_blocks: 1u64.try_into().unwrap(),
-                salt: "deadbeef".into(),
+                digest: Digest::Sha256([0x11; 32]),
+                size: NonZero::new(1024).unwrap().into(),
+                verity: crate::artifact::ScuteVerity {
+                    digest: Digest::Sha256([0x22; 32]),
+                    data_blocks: NonZero::new(1).unwrap().into(),
+                    salt: vec![0; 32].try_into().unwrap(),
+                },
             },
         };
         let pmi_desc = PmiDescriptor {
-            digest: "sha256:beef".into(),
+            digest: Digest::Sha256([0xbe; 32]),
             size: 0,
         };
         assert_eq!(

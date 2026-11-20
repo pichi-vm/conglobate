@@ -115,6 +115,42 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
     }
 }
 impl CapturedBuild {
+    /// Describe the captured inputs before constructing the output manifest.
+    pub(crate) fn provenance(
+        &self,
+        request: &BuildRequest,
+    ) -> anyhow::Result<crate::artifact::BuildProvenance> {
+        use crate::artifact::{BuildProvenance, Commit};
+        let commit = self.context().commit();
+        let commit = match commit.kind() {
+            gix::hash::Kind::Sha1 => Commit::Sha1(commit.as_bytes().try_into()?),
+            gix::hash::Kind::Sha256 => Commit::Sha256(commit.as_bytes().try_into()?),
+            _ => anyhow::bail!("unsupported Git commit algorithm"),
+        };
+        let text = |path: &std::path::Path| -> anyhow::Result<String> {
+            Ok(path
+                .to_str()
+                .ok_or_else(|| anyhow::anyhow!("provenance path is not UTF-8"))?
+                .into())
+        };
+        let context = text(request.context().as_ref())?;
+        Ok(BuildProvenance {
+            commit: commit.into(),
+            context: if context.is_empty() {
+                ".".into()
+            } else {
+                context
+            },
+            plan: text(self.plan_document().path().as_ref())?,
+            lock: self
+                .lock_document()
+                .map(|lock| text(lock.path().as_ref()))
+                .transpose()?,
+            location: request.location().map(str::to_owned),
+            bootstrapped: self.graph().bootstrapped().into(),
+        })
+    }
+
     pub(crate) fn execution_mappings(&self) -> Result<crate::isolation::IdMappings, InputError> {
         self.id_mappings.ok_or(InputError::IdMappingsRequired)
     }
@@ -165,11 +201,8 @@ impl CheckedImage {
                 _ => None,
             })
             .map(|descriptor| {
-                let digest = descriptor
-                    .digest
-                    .parse()
-                    .map_err(|_| crate::cache::CacheError::Invalid("invalid bootconfig digest"))?;
-                cache.metadata(&digest, Some(descriptor.size))
+                let digest = &descriptor.digest;
+                cache.metadata(digest, Some(descriptor.size))
             })
             .transpose()
     }

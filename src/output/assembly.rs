@@ -16,108 +16,22 @@ use sha2::{Digest as _, Sha256};
 #[derive(Debug)]
 pub(crate) struct AssembledImage {
     staged: StagedDirectory,
+    #[cfg(test)]
     image: ResolvedImage,
 }
 impl AssembledImage {
-    fn verity_defaults() -> [(&'static str, u32); 4] {
+    fn verity_defaults() -> [(&'static str, u32); 3] {
         [
             ("dev.pichi.carapace.verity.data-block-size", 4096),
             ("dev.pichi.carapace.verity.hash-block-size", 4096),
             ("dev.pichi.carapace.verity.version", 1),
-            ("dev.pichi.carapace.verity.hash-type", 1),
         ]
     }
     fn set_tip_annotation(manifest: &mut serde_json::Value, root: Option<[u8; 32]>) {
         if let Some(root) = root {
-            manifest["annotations"]
-                .as_object_mut()
-                .expect("manifest annotations")
-                .remove("dev.pichi.carapace.verity.algo");
             manifest["annotations"][CARAPACE_ROOT_ANNOTATION] =
                 Digest::Sha256(root).to_string().into();
         }
-    }
-    /// Stamp the resolved input before hashing and validating the final layout.
-    pub(crate) fn bind_build(
-        mut self,
-        request: &crate::request::BuildRequest,
-        build: &crate::input::CapturedBuild,
-    ) -> anyhow::Result<Self> {
-        let mut manifest: serde_json::Value =
-            serde_json::from_slice(self.image.manifest_bytes().bytes())?;
-        let annotations = manifest
-            .as_object_mut()
-            .expect("validated manifest")
-            .entry("annotations")
-            .or_insert_with(|| serde_json::json!({}))
-            .as_object_mut()
-            .ok_or_else(|| anyhow::anyhow!("invalid manifest annotations"))?;
-        // Inherited provenance belongs to the old build. Keep unrelated and
-        // verity annotations, but replace the entire build binding.
-        annotations.retain(|key, _| !key.starts_with("dev.pichi.build."));
-        let commit = build.context().commit();
-        let algorithm = match commit.kind() {
-            gix::hash::Kind::Sha1 => "sha1",
-            gix::hash::Kind::Sha256 => "sha256",
-            _ => anyhow::bail!("unsupported Git commit algorithm"),
-        };
-        let context: &std::path::Path = request.context().as_ref();
-        for (key, value) in [
-            ("commit", format!("{algorithm}:{commit}")),
-            (
-                "context",
-                if context.as_os_str().is_empty() {
-                    ".".into()
-                } else {
-                    context
-                        .to_str()
-                        .ok_or_else(|| anyhow::anyhow!("context is not UTF-8"))?
-                        .into()
-                },
-            ),
-            (
-                "plan",
-                build
-                    .plan_document()
-                    .path()
-                    .as_ref()
-                    .to_str()
-                    .ok_or_else(|| anyhow::anyhow!("plan path is not UTF-8"))?
-                    .into(),
-            ),
-        ] {
-            annotations.insert(format!("dev.pichi.build.{key}"), value.into());
-        }
-        if let Some(lock) = build.lock_document() {
-            let path = lock
-                .path()
-                .as_ref()
-                .to_str()
-                .ok_or_else(|| anyhow::anyhow!("lock path is not UTF-8"))?;
-            annotations.insert("dev.pichi.build.lock".into(), path.into());
-        }
-        if build.graph().bootstrapped() {
-            annotations.insert("dev.pichi.build.bootstrapped".into(), "true".into());
-        }
-        if let Some(location) = request.location() {
-            annotations.insert("dev.pichi.build.location".into(), location.into());
-        }
-        let old_digest = self.image.manifest_bytes().digest().clone();
-        let image = Self::resolve_staging(
-            &self.staged,
-            &serde_json::to_vec(&manifest)?,
-            self.image.architecture(),
-        )?;
-        anyhow::ensure!(
-            self.image.root() == image.root(),
-            "build binding changed the scute graph"
-        );
-        let new_digest = Digest::Sha256(Sha256::digest(image.manifest_bytes().bytes()).into());
-        if old_digest != new_digest {
-            std::fs::remove_file(self.staged.blob_path(&old_digest))?;
-        }
-        self.image = image;
-        Ok(self)
     }
     pub(crate) fn publish(self) -> std::io::Result<()> {
         self.staged.publish()
@@ -143,6 +57,7 @@ impl AssembledImage {
             cache,
             selection,
             requirements,
+            crate::cache::tests::provenance(),
             StagedDirectory::create(destination)?,
         )
     }
@@ -150,6 +65,7 @@ impl AssembledImage {
         cache: &Cache,
         selection: &crate::pipeline::output::StageOutput<'_, '_>,
         requirements: Option<&crate::artifact::Requirements>,
+        provenance: crate::artifact::BuildProvenance,
         staged: StagedDirectory,
     ) -> anyhow::Result<Self> {
         let assembled = (|| -> anyhow::Result<ResolvedImage> {
@@ -171,16 +87,14 @@ impl AssembledImage {
                     ..Default::default()
                 })?;
                 let digest = staged.store_blob(&bytes)?;
-                manifest["config"] =
-                    serde_json::to_value(crate::artifact::ConfigDescriptor::for_config(
-                        digest.to_string(),
-                        bytes.len() as u64,
-                    ))?;
+                manifest["config"] = serde_json::to_value(
+                    crate::artifact::ConfigDescriptor::for_config(digest, bytes.len() as u64),
+                )?;
             } else if let Some(image) = metadata
                 && !image.image().manifest().config.is_empty()
             {
                 let config = &image.image().manifest().config;
-                staged.copy_blob(cache, &config.digest.parse()?, config.size)?;
+                staged.copy_blob(cache, &config.digest, config.size)?;
             } else {
                 staged.store_blob(b"{}")?;
             }
@@ -254,12 +168,20 @@ impl AssembledImage {
                 let digest = staged.store_blob(&config.bytes)?;
                 layers.push(serde_json::to_value(crate::artifact::Layer::BootConfig(
                     crate::artifact::BootConfigDescriptor {
-                        digest: digest.to_string(),
+                        digest,
                         size: config.bytes.len() as u64,
                     },
                 ))?);
             }
             manifest["layers"] = layers.into();
+            let annotations = manifest["annotations"]
+                .as_object_mut()
+                .expect("manifest annotations");
+            annotations.retain(|key, _| !key.starts_with("dev.pichi.build."));
+            let serde_json::Value::Object(binding) = serde_json::to_value(provenance)? else {
+                unreachable!("build provenance serializes as annotations");
+            };
+            annotations.extend(binding);
             Ok(Self::resolve_staging(
                 &staged,
                 &serde_json::to_vec(&manifest)?,
@@ -267,7 +189,11 @@ impl AssembledImage {
             )?)
         })();
         match assembled {
-            Ok(image) => Ok(Self { staged, image }),
+            Ok(_image) => Ok(Self {
+                staged,
+                #[cfg(test)]
+                image: _image,
+            }),
             Err(error) => Err(match staged.discard() {
                 Ok(()) => error,
                 Err(cleanup) => error.context(format!("output staging cleanup: {cleanup}")),
@@ -357,7 +283,7 @@ mod tests {
                 crate::artifact::ConfigDescriptor::canonical()
             } else {
                 crate::artifact::ConfigDescriptor::for_config(
-                    Digest::Sha256(Sha256::digest(&config).into()).to_string(),
+                    Digest::Sha256(Sha256::digest(&config).into()),
                     config.len() as u64,
                 )
             };
@@ -370,7 +296,16 @@ mod tests {
                     {"mediaType": media_type, "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
                     {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": Digest::Sha256(Sha256::digest(&bootconfig).into()).to_string(), "size": bootconfig.len()}
                 ],
-                "annotations": {"example.org/retain": "exactly"},
+                "annotations": {
+                    "example.org/retain": "exactly",
+                    "dev.pichi.build.commit": format!("sha1:{}", "12".repeat(20)),
+                    "dev.pichi.build.context": ".",
+                    "dev.pichi.build.plan": "old-plan.yaml",
+                    "dev.pichi.build.lock": "old-lock.yaml",
+                    "dev.pichi.build.location": "https://example.org/old",
+                    "dev.pichi.build.bootstrapped": "true",
+                    "dev.pichi.build.tree": "retired",
+                },
                 "x-preserved-extension": {"nested": [1, 2, 3]}
             })).unwrap();
             let manifest_digest = Digest::Sha256(Sha256::digest(&manifest).into());
@@ -415,6 +350,16 @@ mod tests {
                 blobs,
             }
         }
+        fn expected_output(&self) -> serde_json::Value {
+            let mut manifest: serde_json::Value = serde_json::from_slice(&self.manifest).unwrap();
+            manifest["annotations"] = serde_json::json!({
+                "dev.pichi.build.commit": format!("sha1:{}", "12".repeat(20)),
+                "dev.pichi.build.context": ".",
+                "dev.pichi.build.plan": "plan.yaml",
+                "example.org/retain": "exactly",
+            });
+            manifest
+        }
         fn open(&self) -> (Cache, crate::input::CheckedImage) {
             let cache = Cache::open(self.directory.path()).unwrap();
             let image = cache.resolve(self.pin).unwrap();
@@ -429,7 +374,8 @@ mod tests {
                 root: None,
                 pmi: Some(crate::pipeline::pmi::Pmi::Inherited(image)),
                 bootconfig: Some(crate::pipeline::boot_config::BootConfig {
-                    bytes: self.blobs[image.image().manifest().layers[1].digest_str()].clone(),
+                    bytes: self.blobs[&image.image().manifest().layers[1].digest().to_string()]
+                        .clone(),
                     root: None,
                 }),
             }
@@ -525,35 +471,16 @@ mod tests {
                     let captured = CapturedBuild::try_from(&request).unwrap();
                     fs::write(selected.join("plan.yaml"), "working tree changed").unwrap();
                     let selection = input.selection(&image);
-                    let mut assembled =
-                        AssembledImage::components(&cache, &selection, None, &destination).unwrap();
-                    // Seed stale build keys to exercise pass-through rebinding.
-                    let mut manifest: serde_json::Value =
-                        serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
-                    for key in [
-                        "commit",
-                        "context",
-                        "plan",
-                        "lock",
-                        "location",
-                        "bootstrapped",
-                        "tree",
-                        "object-format",
-                    ] {
-                        manifest["annotations"][format!("dev.pichi.build.{key}")] = "stale".into();
-                    }
-                    let stale = AssembledImage::resolve_staging(
-                        &assembled.staged,
-                        &serde_json::to_vec(&manifest).unwrap(),
-                        image.image().architecture(),
+                    let manifest: serde_json::Value =
+                        serde_json::from_slice(image.image().manifest_bytes().bytes()).unwrap();
+                    let assembled = AssembledImage::in_staging(
+                        &cache,
+                        &selection,
+                        None,
+                        captured.provenance(&request).unwrap(),
+                        StagedDirectory::create(&destination).unwrap(),
                     )
                     .unwrap();
-                    let original = Digest::Sha256(
-                        Sha256::digest(assembled.image.manifest_bytes().bytes()).into(),
-                    );
-                    fs::remove_file(assembled.staged.blob_path(&original)).unwrap();
-                    assembled.image = stale;
-                    let assembled = assembled.bind_build(&request, &captured).unwrap();
                     let final_manifest: serde_json::Value =
                         serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
                     let annotations = final_manifest["annotations"].as_object().unwrap();
@@ -604,7 +531,7 @@ mod tests {
     fn overlay_replaces_only_bootconfig_and_references_input_pmi() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
+        let old = input.expected_output();
         let old_digest = old["layers"][1]["digest"].as_str().unwrap();
         let mut selection = input.selection(&image);
         let result = ruzstd::encoding::compress_to_vec(
@@ -636,7 +563,7 @@ mod tests {
                 .exists()
         );
         let pmi = &image.image().manifest().layers[0];
-        let digest = pmi.digest_str().parse().unwrap();
+        let digest = pmi.digest().clone();
         assert!(!assembled.staged.blob_path(&digest).exists());
         cache.verify(&digest, pmi.size()).unwrap();
         assembled.discard().unwrap();
@@ -674,7 +601,7 @@ mod tests {
                     assembled.image().manifest_bytes().bytes()
                 )
                 .unwrap(),
-                serde_json::from_slice::<serde_json::Value>(&input.manifest).unwrap()
+                input.expected_output()
             );
             let blob_directory = assembled.staged.temporary.path().join("blobs/sha256");
             assert_eq!(
@@ -687,7 +614,7 @@ mod tests {
                     continue;
                 } // JSON may be serialized canonically.
                 let path = blob_directory.join(digest.strip_prefix("sha256:").unwrap());
-                if digest == pmi.digest_str() {
+                if digest == pmi.digest().to_string() {
                     assert!(!path.exists());
                     cache.verify(&digest.parse().unwrap(), pmi.size()).unwrap();
                 } else {
@@ -731,14 +658,14 @@ mod tests {
     fn captured_bootconfig_survives_loss_of_cache_copy() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let digest = image.image().manifest().layers[1].digest_str();
+        let digest = image.image().manifest().layers[1].digest();
         let selection = input.selection(&image);
         fs::remove_file(
             input
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(digest.strip_prefix("sha256:").unwrap()),
+                .join(digest.hex()),
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
@@ -748,12 +675,12 @@ mod tests {
         assert_eq!(
             serde_json::from_slice::<serde_json::Value>(assembled.image().manifest_bytes().bytes())
                 .unwrap(),
-            serde_json::from_slice::<serde_json::Value>(&input.manifest).unwrap()
+            input.expected_output()
         );
         let layer = &assembled.image().manifest().layers[1];
         Cache::open(assembled.staged.temporary.path())
             .unwrap()
-            .verify(&layer.digest_str().parse().unwrap(), layer.size())
+            .verify(layer.digest(), layer.size())
             .unwrap();
         assembled.discard().unwrap();
         assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
@@ -768,7 +695,7 @@ mod tests {
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(config.digest.strip_prefix("sha256:").unwrap()),
+                .join(config.digest.hex()),
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();

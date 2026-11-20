@@ -5,7 +5,7 @@
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BootConfigDescriptor {
     /// Content digest of the compressed blob.
-    pub digest: String,
+    pub digest: super::Digest,
     /// Compressed blob size in bytes, independent of the PMI reservation.
     pub size: u64,
 }

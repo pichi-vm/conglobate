@@ -88,10 +88,7 @@ impl Cache {
         if ContentDigest::Sha256(Sha256::digest(&bytes).into()) != *digest {
             return Err(CacheError::Invalid("metadata content mismatch"));
         }
-        Ok(VerifiedMetadata {
-            digest: digest.clone(),
-            bytes,
-        })
+        Ok(VerifiedMetadata { bytes })
     }
     fn read_metadata(
         &self,
@@ -157,13 +154,9 @@ impl Cache {
 
 #[derive(Debug)]
 pub(crate) struct VerifiedMetadata {
-    digest: ContentDigest,
     bytes: Vec<u8>,
 }
 impl VerifiedMetadata {
-    pub(crate) fn digest(&self) -> &ContentDigest {
-        &self.digest
-    }
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
@@ -171,10 +164,28 @@ impl VerifiedMetadata {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    pub(crate) fn provenance() -> crate::artifact::BuildProvenance {
+        crate::artifact::BuildProvenance {
+            commit: crate::artifact::Commit::Sha1([0x12; 20]).into(),
+            context: ".".into(),
+            plan: "plan.yaml".into(),
+            lock: None,
+            location: None,
+            bootstrapped: false.into(),
+        }
+    }
+    pub(crate) fn annotations() -> crate::artifact::ManifestAnnotations {
+        crate::artifact::ManifestAnnotations {
+            build: provenance(),
+            verity: Default::default(),
+            oci: Default::default(),
+        }
+    }
+
     use crate::artifact::Digest;
     use crate::cache::Cache;
     use sha2::{Digest as _, Sha256};
-    use std::path::PathBuf;
+    use std::{num::NonZero, path::PathBuf};
 
     struct Store(tempfile::TempDir);
     impl Store {
@@ -257,7 +268,7 @@ pub(crate) mod tests {
                 artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers: Vec::new(),
-                annotations: Default::default(),
+                annotations: annotations(),
             };
             let bytes = serde_json::to_vec(&manifest).unwrap();
             (self.put(&bytes), bytes)
@@ -289,7 +300,10 @@ pub(crate) mod tests {
         let pin = store.index(vec![unrelated, selected]);
         let image = store.open().resolve(pin).unwrap();
         assert_eq!(image.manifest_bytes().bytes(), bytes);
-        assert_eq!(image.manifest_bytes().digest(), &digest);
+        assert_eq!(
+            Digest::Sha256(Sha256::digest(image.manifest_bytes().bytes()).into()),
+            digest
+        );
     }
 
     #[test]
@@ -349,7 +363,7 @@ pub(crate) mod tests {
         let config_digest = Digest::Sha256(Sha256::digest(config).into());
         manifest["config"] = serde_json::json!({
             "mediaType":"application/vnd.pichi.config.v1+json",
-            "digest":config_digest.to_string(),"size":config.len()});
+            "digest":config_digest.clone(),"size":config.len()});
         let encoded = serde_json::to_vec(&manifest).unwrap();
         let digest = store.put(&encoded);
         let pin = store.index(vec![store.descriptor(&digest, encoded.len())]);
@@ -379,7 +393,7 @@ pub(crate) mod tests {
             let directory = self.path(&digest).with_extension("prepared");
             std::fs::create_dir_all(&directory).unwrap();
             let key = hex::encode(Sha256::digest(header.encode()));
-            std::fs::write(directory.join(format!("{key}.verity")), tree).unwrap();
+            std::fs::write(directory.join(format!("{key}.verity")), &tree).unwrap();
             let size = header.parameters.data_size().unwrap();
             if compressed || data.len() as u64 != size {
                 let mut padded = data.to_vec();
@@ -387,14 +401,16 @@ pub(crate) mod tests {
                 std::fs::write(directory.join(format!("{size}.deflated")), padded).unwrap();
             }
             let descriptor = crate::artifact::ScuteDescriptor {
-                digest: digest.to_string(),
+                digest: digest.clone(),
                 size: bytes.len() as u64,
                 annotations: crate::artifact::ScuteAnnotations {
-                    digest: None,
-                    size: None,
-                    verity_digest: None,
-                    data_blocks,
-                    salt: hex::encode(parent),
+                    digest: crate::artifact::Digest::Sha256(Sha256::digest(data).into()),
+                    size: NonZero::new(data.len() as u64).unwrap().into(),
+                    verity: crate::artifact::ScuteVerity {
+                        digest: crate::artifact::Digest::Sha256(Sha256::digest(&tree).into()),
+                        data_blocks: data_blocks.into(),
+                        salt: parent.to_vec().try_into().unwrap(),
+                    },
                 },
             };
             (
@@ -417,12 +433,19 @@ pub(crate) mod tests {
                     ("data-block-size", "4096"),
                     ("hash-block-size", "4096"),
                     ("version", "1"),
-                    ("hash-type", "1"),
                     ("hash", &crate::artifact::Digest::Sha256(root).to_string()),
                 ]
                 .into_iter()
                 .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
-                .collect(),
+                .chain(
+                    serde_json::from_value::<std::collections::BTreeMap<String, String>>(
+                        serde_json::to_value(provenance()).unwrap(),
+                    )
+                    .unwrap(),
+                )
+                .collect::<std::collections::BTreeMap<_, _>>()
+                .try_into()
+                .unwrap(),
             };
             serde_json::to_vec(&manifest).unwrap()
         }
@@ -500,7 +523,7 @@ pub(crate) mod tests {
         let image = store.chain_image(vec![layer.clone()], root);
         let cache = store.open();
         cache.verify_metadata(&image).unwrap();
-        let digest = layer.digest_str().parse().unwrap();
+        let digest = layer.digest().clone();
         let mut changed = std::fs::read(store.path(&digest)).unwrap();
         changed[0] ^= 1;
         std::fs::write(store.path(&digest), changed).unwrap();
@@ -572,11 +595,7 @@ pub(crate) mod tests {
         let image = store.chain_image(layers.clone(), top_root);
         assert_eq!(image.root(), Some(top_root));
         for layer in layers {
-            std::fs::write(
-                store.path(&layer.digest_str().parse().unwrap()),
-                vec![0; layer.size() as usize],
-            )
-            .unwrap();
+            std::fs::write(store.path(layer.digest()), vec![0; layer.size() as usize]).unwrap();
         }
         // Input selection requires the extent, without scanning encoded content.
         // Actual filesystem access must open prepared files and verify reads instead.
@@ -589,8 +608,8 @@ pub(crate) mod tests {
         let (layer, root) = store.scute(&[7; 8192], [0; 32], true);
         let mut manifest: serde_json::Value =
             serde_json::from_slice(&store.manifest_bytes(vec![layer], root)).unwrap();
-        manifest["annotations"]["dev.pichi.carapace.verity.version"] = "99".into();
-        manifest["annotations"]["dev.pichi.carapace.verity.hash-type"] = "0".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.version"] = "1".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.hash-block-size"] = "8192".into();
         let bytes = serde_json::to_vec(&manifest).unwrap();
         let digest = store.put(&bytes);
         let cache = store.open();
@@ -639,7 +658,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn decoded_manifest_still_requires_structural_validation() {
+    fn manifest_structure_is_checked_during_deserialization() {
         let store = Store::new();
         let (_, bytes) = store.manifest();
         let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
@@ -649,11 +668,7 @@ pub(crate) mod tests {
         let index = store.index(vec![store.descriptor(&digest, bytes.len())]);
         let error = store.open().resolve(index).unwrap_err();
         let source = std::error::Error::source(&error).unwrap();
-        assert!(
-            source
-                .downcast_ref::<crate::artifact::ManifestValidationError>()
-                .is_some()
-        );
+        assert!(source.downcast_ref::<serde_json::Error>().is_some());
     }
 
     #[test]
@@ -698,9 +713,7 @@ pub(crate) mod tests {
         other_header
             .format([4; 8192].as_slice(), &mut other_tree)
             .unwrap();
-        let directory = store
-            .path(&tip.digest_str().parse().unwrap())
-            .with_extension("prepared");
+        let directory = store.path(tip.digest()).with_extension("prepared");
         std::fs::write(
             directory.join("other-format.verity"),
             other_tree.into_inner(),
@@ -716,7 +729,7 @@ pub(crate) mod tests {
             assert_eq!(chain.scutes.len(), count);
             assert!(chain.scutes[0].data.write_all_at(b"x", 0).is_err());
         }
-        let path = store.path(&tip.digest_str().parse().unwrap());
+        let path = store.path(tip.digest());
         let (base, _) = store.scute(&[4; 8192], [0; 32], false);
         let image = store.chain_image(vec![base], base_root);
         std::fs::OpenOptions::new()
@@ -740,9 +753,7 @@ pub(crate) mod tests {
         let store = Store::new();
         let (base, root) = store.scute(&[1; 8192], [0; 32], false);
         let image = store.chain_image(vec![base.clone()], root);
-        let directory = store
-            .path(&base.digest_str().parse().unwrap())
-            .with_extension("prepared");
+        let directory = store.path(base.digest()).with_extension("prepared");
         let path = std::fs::read_dir(&directory)
             .unwrap()
             .next()
@@ -776,7 +787,7 @@ pub(crate) mod tests {
             let (base, root) = store.scute(&vec![3; size], [0; 32], compressed);
             let image = store.chain_image(vec![base.clone()], root);
             if compressed {
-                std::fs::remove_file(store.path(&base.digest_str().parse().unwrap())).unwrap();
+                std::fs::remove_file(store.path(base.digest())).unwrap();
             }
             let chain = carapace::Chain::from_index(&store.open(), &image).unwrap();
             let mut bytes = vec![0; size.div_ceil(4096) * 4096];
@@ -786,12 +797,35 @@ pub(crate) mod tests {
         }
     }
 
+    #[test]
+    fn rejects_inherited_scutes_without_content_identities() {
+        let store = Store::new();
+        for compressed in [false, true] {
+            let (layer, root) = store.scute(&[7; 4096], [0; 32], compressed);
+            store.chain_image(vec![layer.clone()], root);
+            let original: serde_json::Value =
+                serde_json::from_slice(&store.manifest_bytes(vec![layer], root)).unwrap();
+            for key in [
+                "dev.pichi.scute.digest",
+                "dev.pichi.scute.size",
+                "dev.pichi.scute.verity.digest",
+            ] {
+                let mut manifest = original.clone();
+                manifest["layers"][0]["annotations"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove(key);
+                let bytes = serde_json::to_vec(&manifest).unwrap();
+                let digest = store.put(&bytes);
+                let index = store.index(vec![store.descriptor(&digest, bytes.len())]);
+                assert!(store.open().resolve(index).is_err(), "{compressed}: {key}");
+            }
+        }
+    }
+
     /// Authentic roots for cache metadata fixtures; production only seals snapshots.
     pub(crate) trait ScuteFixture {
         fn scute_files(&self, parent: [u8; 32]) -> (devmap_verity::Header, Vec<u8>, [u8; 32]);
-        fn scute_root(&self, parent: [u8; 32]) -> [u8; 32] {
-            self.scute_files(parent).2
-        }
     }
     impl ScuteFixture for [u8] {
         fn scute_files(&self, parent: [u8; 32]) -> (devmap_verity::Header, Vec<u8>, [u8; 32]) {

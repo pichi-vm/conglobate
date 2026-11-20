@@ -111,7 +111,14 @@ random suffix as its salt. Reused layers keep their existing salts.
 leave only `oci-layout`, `index.json`, and `blobs/sha256/…`. Later attestation
 binds the image digest and TEE/builder.
 
-Build publication stamps these annotations from the resolved committed input.
+Build publication stamps these annotations from the resolved committed input. The shared
+manifest decoder requires commit, context, and plan even on inherited inputs;
+lock and repository location remain optional. Missing provenance must be supplied
+by the producer, not invented by the importer. Rust annotation groups expose
+validated commit IDs and verity block sizes, with defaults applied while decoding.
+The scute format fixes the hash type to normal (1); hash-type annotations are
+rejected, including an explicit `"1"`. Unknown annotation keys are ignored by the typed view; assembly
+still preserves unrelated fields from the authenticated source JSON.
 The library owns the portable plan, lock and artifact types. The engine
 validates execution constraints and dependency ordering, then publishes the
 input-backed OCI layout. Inherited layer bytes remain in the build inputs;
