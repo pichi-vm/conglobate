@@ -394,7 +394,7 @@ pub(crate) mod tests {
                     size: data.len().to_string(),
                     verity_digest: format!("sha256:{}", hex::encode(Sha256::digest(&tree))),
                     data_blocks: data_blocks.into(),
-                    salt: hex::encode(parent),
+                    salt: devmap_verity::Salt::new(&parent).unwrap().into(),
                 },
             };
             (

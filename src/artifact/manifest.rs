@@ -12,6 +12,7 @@
 use super::{AsString, BootConfigDescriptor, Digest};
 use std::collections::BTreeMap;
 
+use devmap_verity::Salt;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -267,9 +268,9 @@ pub struct ScuteAnnotations {
     /// Required, positive, and encoded as a decimal annotation string.
     #[serde(rename = "dev.pichi.scute.verity.data-blocks")]
     pub data_blocks: AsString<std::num::NonZeroU64>,
-    /// Hex-encoded salt for this scute.
+    /// Full salt as hex, including the parent-root prefix.
     #[serde(rename = "dev.pichi.scute.verity.salt")]
-    pub salt: String,
+    pub salt: AsString<Salt>,
     /// Required SHA-256 of the exact decompressed bytes.
     #[serde(rename = "dev.pichi.scute.digest")]
     pub digest: String,
@@ -336,8 +337,8 @@ pub enum ManifestValidationError {
     #[error("boot configuration requires a PMI")]
     BootConfigWithoutPmi,
 
-    /// Scute salt is not valid hex or lacks the 32-byte parent root prefix.
-    #[error("scute salt must contain a hex-encoded parent root: {0}")]
+    /// Scute salt lacks the SHA-256 parent-root prefix.
+    #[error("scute salt must contain a SHA-256 parent root: {0}")]
     BadSalt(String),
 
     /// The first scute must be the base; later scutes must have a parent.
@@ -536,11 +537,10 @@ impl Manifest {
                     value: value.clone(),
                 });
             }
-            let salt = hex::decode(&d.annotations.salt)
-                .map_err(|_| ManifestValidationError::BadSalt(d.annotations.salt.clone()))?;
-            let parent = salt
-                .get(..32)
-                .ok_or_else(|| ManifestValidationError::BadSalt(d.annotations.salt.clone()))?;
+            let parent =
+                d.annotations.salt.as_ref().get(..32).ok_or_else(|| {
+                    ManifestValidationError::BadSalt(d.annotations.salt.to_string())
+                })?;
             if first_scute != parent.iter().all(|byte| *byte == 0) {
                 return Err(ManifestValidationError::BadScuteOrder(d.digest.clone()));
             }
@@ -647,7 +647,7 @@ mod tests {
             digest: format!("sha256:{}", "11".repeat(32)),
             size: "1024".into(),
             verity_digest: format!("sha256:{}", "22".repeat(32)),
-            salt: "00".into(),
+            salt: Salt::new(&[0]).unwrap().into(),
             data_blocks: std::num::NonZeroU64::new(2).unwrap().into(),
         };
         let json = serde_json::to_value(&annotations).unwrap();
@@ -846,7 +846,7 @@ mod tests {
                     size: "1024".into(),
                     verity_digest: format!("sha256:{}", "22".repeat(32)),
                     data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
-                    salt: "00".repeat(32),
+                    salt: Salt::new(&[0; 32]).unwrap().into(),
                 },
             })],
             annotations: sample_chain_annotations(),
@@ -973,15 +973,12 @@ mod tests {
     }
 
     #[test]
-    fn validate_rejects_non_hex_salt() {
-        let mut m = sample_base_manifest();
-        if let Layer::Scute(d) = &mut m.layers[0] {
-            d.annotations.salt = "ZZZZ".into();
+    fn deserialization_checks_salt_encoding() {
+        let mut json = serde_json::to_value(sample_base_manifest()).unwrap();
+        for salt in ["ZZZZ".to_owned(), "00".repeat(257)] {
+            json["layers"][0]["annotations"]["dev.pichi.scute.verity.salt"] = salt.into();
+            assert!(serde_json::from_value::<Manifest>(json.clone()).is_err());
         }
-        assert!(matches!(
-            m.validate().unwrap_err(),
-            ManifestValidationError::BadSalt(_)
-        ));
     }
 
     #[test]
@@ -994,8 +991,10 @@ mod tests {
         let Layer::Scute(base) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        base.annotations.salt.push_str("abcd");
-        child.annotations.salt = "ab".repeat(32);
+        base.annotations.salt = Salt::new(&[vec![0; 32], vec![0xab, 0xcd]].concat())
+            .unwrap()
+            .into();
+        child.annotations.salt = Salt::new(&[0xab; 32]).unwrap().into();
         manifest.layers.insert(
             0,
             Layer::Pmi(PmiDescriptor {
@@ -1026,7 +1025,7 @@ mod tests {
             let Layer::Scute(base) = &mut manifest.layers[0] else {
                 unreachable!()
             };
-            base.annotations.salt = salt;
+            base.annotations.salt = salt.parse::<Salt>().unwrap().into();
             assert!(matches!(
                 manifest.validate(),
                 Err(ManifestValidationError::BadSalt(_))
@@ -1203,7 +1202,7 @@ mod tests {
                 size: "1024".into(),
                 verity_digest: format!("sha256:{}", "22".repeat(32)),
                 data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
-                salt: "deadbeef".into(),
+                salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
             },
         };
         let pmi_desc = PmiDescriptor {
@@ -1225,7 +1224,7 @@ mod tests {
                 size: "1024".into(),
                 verity_digest: format!("sha256:{}", "22".repeat(32)),
                 data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
-                salt: "deadbeef".into(),
+                salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
             },
         };
         let pmi_desc = PmiDescriptor {

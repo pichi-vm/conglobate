@@ -39,7 +39,7 @@ cli = [
     "dep:devmap-snapshot",
     "dep:devmap-linux",
     "dep:devmap-core",
-    "dep:devmap-verity",
+    "devmap-verity/sha2",
     "dep:carapace",
 ]
 
@@ -89,7 +89,7 @@ carapace = { git = "https://github.com/pichi-vm/carapace", branch = "main", opti
 devmap-snapshot = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", optional = true }
 devmap-linux = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", optional = true }
 devmap-core = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", optional = true }
-devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", optional = true, features = ["sha2"] }
+devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", default-features = false }
 
 [dev-dependencies]
 # Independent GPT fixtures.
