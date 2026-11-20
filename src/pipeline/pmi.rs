@@ -43,7 +43,7 @@ impl Pmi<'_, '_> {
             Self::Inherited(_) => Ok(layer),
             Self::File(file) => Ok(Layer::PmiZstd(staged.store_pmi(
                 file.reader(),
-                &layer.digest_str().parse()?,
+                layer.digest(),
                 layer.size(),
             )?)),
         }
@@ -89,7 +89,7 @@ mod tests {
         };
         let descriptor = descriptor.clone();
         assembled.publish().unwrap();
-        let digest: crate::artifact::Digest = descriptor.digest.parse().unwrap();
+        let digest: crate::artifact::Digest = descriptor.digest;
         let encoded = fs::read(destination.join("blobs/sha256").join(digest.hex())).unwrap();
         assert_eq!(descriptor.size, encoded.len() as u64);
         assert_eq!(

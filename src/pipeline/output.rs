@@ -690,7 +690,7 @@ mod tests {
         let layers = manifest.layers;
         completed.publish().unwrap();
         for layer in layers {
-            let digest: Digest = layer.digest_str().parse().unwrap();
+            let digest: Digest = layer.digest().clone();
             let present = request
                 .output()
                 .join("blobs/sha256")
@@ -773,7 +773,7 @@ mod tests {
             if boot {
                 let expected = b"opaque PMI".to_vec();
                 let layer = selected.pmi.as_ref().unwrap().source_layer();
-                assert_eq!(layer.digest_str(), fixture.blob(&expected));
+                assert_eq!(layer.digest().to_string(), fixture.blob(&expected));
             }
             assembled.publish().unwrap();
             Fixture::assert_output(request.output(), root, boot, config);

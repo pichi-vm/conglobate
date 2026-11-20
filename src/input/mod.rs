@@ -164,13 +164,7 @@ impl CheckedImage {
                 crate::artifact::Layer::BootConfig(descriptor) => Some(descriptor),
                 _ => None,
             })
-            .map(|descriptor| {
-                let digest = descriptor
-                    .digest
-                    .parse()
-                    .map_err(|_| crate::cache::CacheError::Invalid("invalid bootconfig digest"))?;
-                cache.metadata(&digest, Some(descriptor.size))
-            })
+            .map(|descriptor| cache.metadata(&descriptor.digest, Some(descriptor.size)))
             .transpose()
     }
     pub(crate) fn image(&self) -> &crate::cache::ResolvedImage {

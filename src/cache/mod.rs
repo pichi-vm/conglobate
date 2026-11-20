@@ -387,7 +387,7 @@ pub(crate) mod tests {
                 std::fs::write(directory.join(format!("{size}.deflated")), padded).unwrap();
             }
             let descriptor = crate::artifact::ScuteDescriptor {
-                digest: digest.to_string(),
+                digest: digest.clone(),
                 size: bytes.len() as u64,
                 annotations: crate::artifact::ScuteAnnotations {
                     digest: Digest::Sha256(Sha256::digest(data).into()),
@@ -500,7 +500,7 @@ pub(crate) mod tests {
         let image = store.chain_image(vec![layer.clone()], root);
         let cache = store.open();
         cache.verify_metadata(&image).unwrap();
-        let digest = layer.digest_str().parse().unwrap();
+        let digest = layer.digest().clone();
         let mut changed = std::fs::read(store.path(&digest)).unwrap();
         changed[0] ^= 1;
         std::fs::write(store.path(&digest), changed).unwrap();
@@ -572,11 +572,7 @@ pub(crate) mod tests {
         let image = store.chain_image(layers.clone(), top_root);
         assert_eq!(image.root(), Some(top_root));
         for layer in layers {
-            std::fs::write(
-                store.path(&layer.digest_str().parse().unwrap()),
-                vec![0; layer.size() as usize],
-            )
-            .unwrap();
+            std::fs::write(store.path(layer.digest()), vec![0; layer.size() as usize]).unwrap();
         }
         // Input selection requires the extent, without scanning encoded content.
         // Actual filesystem access must open prepared files and verify reads instead.
@@ -698,9 +694,7 @@ pub(crate) mod tests {
         other_header
             .format([4; 8192].as_slice(), &mut other_tree)
             .unwrap();
-        let directory = store
-            .path(&tip.digest_str().parse().unwrap())
-            .with_extension("prepared");
+        let directory = store.path(tip.digest()).with_extension("prepared");
         std::fs::write(
             directory.join("other-format.verity"),
             other_tree.into_inner(),
@@ -716,7 +710,7 @@ pub(crate) mod tests {
             assert_eq!(chain.scutes.len(), count);
             assert!(chain.scutes[0].data.write_all_at(b"x", 0).is_err());
         }
-        let path = store.path(&tip.digest_str().parse().unwrap());
+        let path = store.path(tip.digest());
         let (base, _) = store.scute(&[4; 8192], [0; 32], false);
         let image = store.chain_image(vec![base], base_root);
         std::fs::OpenOptions::new()
@@ -740,9 +734,7 @@ pub(crate) mod tests {
         let store = Store::new();
         let (base, root) = store.scute(&[1; 8192], [0; 32], false);
         let image = store.chain_image(vec![base.clone()], root);
-        let directory = store
-            .path(&base.digest_str().parse().unwrap())
-            .with_extension("prepared");
+        let directory = store.path(base.digest()).with_extension("prepared");
         let path = std::fs::read_dir(&directory)
             .unwrap()
             .next()
@@ -776,7 +768,7 @@ pub(crate) mod tests {
             let (base, root) = store.scute(&vec![3; size], [0; 32], compressed);
             let image = store.chain_image(vec![base.clone()], root);
             if compressed {
-                std::fs::remove_file(store.path(&base.digest_str().parse().unwrap())).unwrap();
+                std::fs::remove_file(store.path(base.digest())).unwrap();
             }
             let chain = carapace::Chain::from_index(&store.open(), &image).unwrap();
             let mut bytes = vec![0; size.div_ceil(4096) * 4096];
