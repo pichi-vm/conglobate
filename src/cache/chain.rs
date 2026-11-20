@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, ResolvedImage};
-use crate::artifact::{Digest as ContentDigest, Layer};
+use crate::artifact::Layer;
 use carapace::{Chain, Scute};
 use devmap_verity::{Algorithm, HashType, Header};
 use rustix::fs::{Dir, OFlags};
@@ -56,10 +56,7 @@ impl Cache {
         layer: &Layer,
         root: [u8; 32],
     ) -> Result<(Scute, [u8; 32]), CacheError> {
-        let digest: ContentDigest = layer
-            .digest_str()
-            .parse()
-            .map_err(|_| CacheError::Invalid("invalid scute digest"))?;
+        let digest = layer.digest();
         let source = PathBuf::from(format!("blobs/{}/{}", digest.algo(), digest.hex()));
         let directory = source.with_extension("prepared");
         let handle = self.open_at(&directory, OFlags::DIRECTORY)?;

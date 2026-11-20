@@ -211,7 +211,7 @@ impl<'w> Scratch<'w> {
         hash.as_file().sync_all()?;
         blob.as_file().sync_all()?;
         let descriptor = ScuteDescriptor {
-            digest: format!("sha256:{}", hex::encode(digest.finalize())),
+            digest: Digest::Sha256(digest.finalize().into()),
             size,
             annotations: ScuteAnnotations {
                 digest: Digest::Sha256(data_digest.into()),
@@ -352,7 +352,7 @@ mod tests {
         assert_eq!(sealed.descriptor().size, blob.len() as u64);
         assert_eq!(
             sealed.descriptor().digest,
-            format!("sha256:{}", hex::encode(Sha256::digest(&blob)))
+            Digest::Sha256(Sha256::digest(&blob).into())
         );
         let mut decoder = ruzstd::decoding::StreamingDecoder::new(blob.as_slice()).unwrap();
         let mut decoded = Vec::new();

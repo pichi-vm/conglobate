@@ -205,11 +205,7 @@ impl StagedDirectory {
         &self,
         scute: &crate::storage::SealedScute,
     ) -> Result<(), CacheError> {
-        let digest: Digest = scute
-            .descriptor()
-            .digest
-            .parse()
-            .map_err(|_| CacheError::Invalid("invalid produced scute digest"))?;
+        let digest = &scute.descriptor().digest;
         let directory = self.blob_directory()?;
         use std::os::fd::AsRawFd as _;
         let destination =
@@ -257,10 +253,7 @@ impl StagedDirectory {
         pending
             .persist(Path::new(&path).join(digest.hex()))
             .map_err(|error| error.error)?;
-        Ok(PmiDescriptor {
-            digest: digest.to_string(),
-            size,
-        })
+        Ok(PmiDescriptor { digest, size })
     }
     /// Store captured or newly produced small content, deriving its identity
     /// from these bytes. The coordinator supplies the matching descriptor.
@@ -404,18 +397,18 @@ mod tests {
         let descriptor = staged
             .store_pmi(&bytes[..], &digest, bytes.len() as u64)
             .unwrap();
-        let encoded = fs::read(staged.blob_path(&descriptor.digest.parse().unwrap())).unwrap();
+        let encoded = fs::read(staged.blob_path(&descriptor.digest)).unwrap();
         assert_eq!(descriptor.size, encoded.len() as u64);
         assert_eq!(
             descriptor.digest,
-            Digest::Sha256(Sha256::digest(&encoded).into()).to_string()
+            Digest::Sha256(Sha256::digest(&encoded).into())
         );
         let mut decoded = Vec::new();
         let mut decoder = ruzstd::decoding::StreamingDecoder::new(encoded.as_slice()).unwrap();
         decoder.read_to_end(&mut decoded).unwrap();
         assert!(decoder.into_inner().is_empty());
         assert_eq!(decoded, bytes);
-        assert_ne!(descriptor.digest, digest.to_string());
+        assert_ne!(descriptor.digest, digest);
         // A failed retry cannot remove an already completed encoded blob.
         assert!(
             staged
@@ -424,7 +417,7 @@ mod tests {
         );
         assert_eq!(fs::read_dir(&path).unwrap().count(), 1);
         assert_eq!(
-            fs::read(staged.blob_path(&descriptor.digest.parse().unwrap())).unwrap(),
+            fs::read(staged.blob_path(&descriptor.digest)).unwrap(),
             encoded
         );
         drop(directory);
