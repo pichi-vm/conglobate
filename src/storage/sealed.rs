@@ -218,7 +218,7 @@ impl<'w> Scratch<'w> {
                 size: NonZero::new(bytes).unwrap().into(),
                 verity_digest: format!("sha256:{}", hex::encode(verity_digest)),
                 data_blocks: data_blocks.into(),
-                salt: hex::encode(salt),
+                salt: salt.to_vec().try_into().expect("valid header salt"),
             },
         };
         Ok(SealedScute {
@@ -414,7 +414,7 @@ mod tests {
             let salt = header.parameters.salt.as_ref();
             assert_eq!(salt.len(), 64);
             assert_eq!(&salt[..32], parent);
-            assert_eq!(sealed.descriptor().annotations.salt, hex::encode(salt));
+            assert_eq!(sealed.descriptor().annotations.salt.as_ref(), salt);
             assert_eq!(header.parameters.data.count.get(), 2);
             for (index, block) in bytes.as_chunks::<4096>().0.iter().enumerate() {
                 let mut hash = Sha256::new();

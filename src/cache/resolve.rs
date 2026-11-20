@@ -224,7 +224,7 @@ mod tests {
                         size: NonZero::new(data_size as u64).unwrap().into(),
                         verity_digest: Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
                         data_blocks: data_blocks.into(),
-                        salt: hex::encode(parent),
+                        salt: parent.to_vec().try_into().unwrap(),
                     },
                 };
                 layers.push(if compressed {

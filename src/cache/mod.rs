@@ -394,7 +394,7 @@ pub(crate) mod tests {
                     size: NonZero::new(data.len() as u64).unwrap().into(),
                     verity_digest: format!("sha256:{}", hex::encode(Sha256::digest(&tree))),
                     data_blocks: data_blocks.into(),
-                    salt: hex::encode(parent),
+                    salt: parent.to_vec().try_into().unwrap(),
                 },
             };
             (

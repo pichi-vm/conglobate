@@ -42,3 +42,8 @@ pub use index::{
     Index, IndexDescriptor, LayoutMarker, MEDIA_TYPE_OCI_INDEX_V1, MEDIA_TYPE_OCI_MANIFEST_V1,
     Platform,
 };
+
+mod salt;
+mod salt_error;
+pub use salt::Salt;
+pub use salt_error::SaltError;
