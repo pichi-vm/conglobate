@@ -232,7 +232,7 @@ mod tests {
             let config_digest = Digest::Sha256(Sha256::digest(&config).into());
             let annotations = crate::artifact::ManifestAnnotations {
                 oci: Default::default(),
-                build: crate::cache::tests::provenance(),
+                build: None,
                 verity: crate::artifact::CarapaceVerity {
                     root: Some(Digest::Sha256(parent)),
                     ..Default::default()

@@ -270,7 +270,7 @@ pub(crate) mod tests {
                 layers: Vec::new(),
                 annotations: crate::artifact::ManifestAnnotations {
                     oci: Default::default(),
-                    build: provenance(),
+                    build: None,
                     verity: Default::default(),
                 },
             };
@@ -439,7 +439,7 @@ pub(crate) mod tests {
                 layers,
                 annotations: crate::artifact::ManifestAnnotations {
                     oci: Default::default(),
-                    build: provenance(),
+                    build: None,
                     verity: crate::artifact::CarapaceVerity {
                         root: Some(crate::artifact::Digest::Sha256(root)),
                         ..Default::default()

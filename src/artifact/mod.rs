@@ -14,6 +14,7 @@
 mod as_string;
 mod boot_config_descriptor;
 mod build_provenance;
+mod build_provenance_fields;
 mod carapace_verity;
 mod compressable;
 mod config;
@@ -25,6 +26,7 @@ mod manifest_annotations;
 mod media;
 mod media_type;
 mod oci_annotations;
+mod optional_build_provenance;
 mod pichi_artifact;
 mod reference;
 mod sha1;

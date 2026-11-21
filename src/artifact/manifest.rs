@@ -568,14 +568,7 @@ mod tests {
             })],
             annotations: ManifestAnnotations {
                 oci: Default::default(),
-                build: super::super::BuildProvenance {
-                    commit: Digest::Sha1([0xab; 20]),
-                    context: ".".into(),
-                    plan: "plan.yaml".into(),
-                    lock: None,
-                    source: None,
-                    bootstrapped: false.into(),
-                },
+                build: None,
                 verity: super::super::CarapaceVerity {
                     root: Some(Digest::Sha256([0xab; 32])),
                     ..Default::default()
