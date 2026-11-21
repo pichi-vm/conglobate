@@ -993,8 +993,11 @@ Platform selection uses the index descriptor, not the architecture annotation.
 Unknown annotations are ignored by the typed view and preserved through
 assembly's original JSON.
 
-Write these build binding facts on the published image manifest itself,
-not only on an index, index descriptor, or configuration blob:
+Conglobate builds write these build binding facts on the published image
+manifest itself, not only on an index, index descriptor, or configuration blob.
+Raw imports, including seed images used by `!bootstrap`, may omit the entire
+group. If any recognized field below is present, commit, context, and plan
+are all required. Null fields count as absent:
 
 | Annotation | Value |
 | --- | --- |
@@ -1005,10 +1008,11 @@ not only on an index, index descriptor, or configuration blob:
 | `dev.pichi.build.bootstrapped` | `"true"` iff this build used a selected bootstrap tool; otherwise absent |
 | `org.opencontainers.image.source` | Optional: repository containing the captured Git commit |
 
-The typed manifest requires commit, context, and plan during deserialization;
-missing provenance is not backfilled. Commit identities must contain the full
-SHA-1 or SHA-256 digest. Assembly stamps the captured build binding before its
-first staged-manifest validation and writes only the final manifest.
+Deserialization rejects incomplete or malformed provenance rather than
+treating it as absent. No provenance is invented for imported images. Commit
+identities must contain the full SHA-1 or SHA-256 digest. Conglobate assembly
+always stamps complete captured build provenance before its first staged
+manifest validation, including builds using bootstrap inputs.
 
 Source says where to get it; commit says what it is; context selects a path
 in that commit; plan and lock select paths relative to context. The commit

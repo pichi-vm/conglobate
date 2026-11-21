@@ -95,12 +95,13 @@ Dillo implements that specification without transport substitution. See [launch 
 
 The 28 October 2026 decision in
 [DESIGN §11](DESIGN.md#11-artifact-and-build-annotations) drops `inventory.cbor`
-entirely. The image manifest carries `dev.pichi.build.commit` (`sha1:<hex>` or
-`sha256:<hex>`), `dev.pichi.build.context` (path in that commit), and
+entirely. Conglobate-built image manifests carry `dev.pichi.build.commit`
+(`sha1:<hex>` or `sha256:<hex>`), `dev.pichi.build.context` (path in that commit), and
 `dev.pichi.build.plan` / `dev.pichi.build.lock` (paths relative to context).
 `org.opencontainers.image.source` optionally locates the repository containing
-that commit. There are no separate tree/object-format keys or
-builder/input/execution/output mirrors. The carapace
+that commit. Raw imports may omit the whole provenance group; a present group
+requires commit, context, and plan. There are no separate tree/object-format
+keys or builder/input/execution/output mirrors. The carapace
 tip root is recorded once as `sha256:<hex>` in `dev.pichi.carapace.verity.hash`.
 Per-scute salt and decompressed-size annotations describe verity reconstruction.
 Each newly sealed scute uses its parent root followed by a fresh 32-byte

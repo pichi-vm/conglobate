@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use super::optional_build_provenance::OptionalBuildProvenance;
 use super::{BuildProvenance, CarapaceVerity, OciAnnotations};
 use serde::{Deserialize, Serialize};
 
@@ -10,9 +11,9 @@ pub struct ManifestAnnotations {
     /// Informational OCI metadata, independent of platform selection.
     #[serde(flatten)]
     pub oci: OciAnnotations,
-    /// Required source binding for the build.
-    #[serde(flatten)]
-    pub build: BuildProvenance,
+    /// Complete source binding for a build; absent on raw imports.
+    #[serde(flatten, deserialize_with = "OptionalBuildProvenance::deserialize")]
+    pub build: Option<BuildProvenance>,
     /// Carapace identity and reconstruction parameters.
     #[serde(flatten)]
     pub verity: CarapaceVerity,
@@ -99,7 +100,9 @@ mod tests {
     #[test]
     fn provenance_requires_source_facts_without_inventing_optional_values() {
         let value = with_provenance(json!({}));
-        assert!(serde_json::from_value::<ManifestAnnotations>(json!({})).is_err());
+        let imported: ManifestAnnotations = serde_json::from_value(json!({})).unwrap();
+        assert!(imported.build.is_none());
+        assert_eq!(serde_json::to_value(imported).unwrap(), json!({}));
         for key in ["commit", "context", "plan"] {
             let key = format!("dev.pichi.build.{key}");
             let mut missing = value.clone();
@@ -107,9 +110,10 @@ mod tests {
             assert!(serde_json::from_value::<ManifestAnnotations>(missing).is_err());
         }
         let decoded: ManifestAnnotations = serde_json::from_value(value).unwrap();
-        assert!(decoded.build.lock.is_none());
-        assert!(decoded.build.source.is_none());
-        assert!(!*decoded.build.bootstrapped);
+        let build = decoded.build.unwrap();
+        assert!(build.lock.is_none());
+        assert!(build.source.is_none());
+        assert!(!*build.bootstrapped);
         for (key, value) in [("commit", "sha1:abcd"), ("bootstrapped", "yes")] {
             assert!(
                 serde_json::from_value::<ManifestAnnotations>(with_provenance(json!({
@@ -118,6 +122,46 @@ mod tests {
                 .is_err()
             );
         }
+    }
+
+    #[test]
+    fn present_provenance_cannot_be_discarded_as_absent() {
+        let complete = with_provenance(json!({
+            "dev.pichi.build.lock": "lock.yaml",
+            "org.opencontainers.image.source": "https://example.org/source",
+            "dev.pichi.build.bootstrapped": "false"
+        }));
+        for (key, value) in complete.as_object().unwrap() {
+            assert!(serde_json::from_value::<ManifestAnnotations>(json!({key: value})).is_err());
+            let mut invalid = complete.clone();
+            invalid[key] = json!(123);
+            assert!(serde_json::from_value::<ManifestAnnotations>(invalid).is_err());
+            // Preserve duplicate-key rejection, including default/optional fields.
+            let encoded = serde_json::to_string(&complete).unwrap();
+            let duplicate = format!("{{{}:{},{}", json!(key), value, &encoded[1..]);
+            assert!(serde_json::from_str::<ManifestAnnotations>(&duplicate).is_err());
+            assert!(
+                serde_json::from_value::<ManifestAnnotations>(json!({key: null}))
+                    .unwrap()
+                    .build
+                    .is_none()
+            );
+        }
+        let absent = json!({"example.org/metadata": {"arbitrary": true}});
+        assert!(
+            serde_json::from_value::<ManifestAnnotations>(absent)
+                .unwrap()
+                .build
+                .is_none()
+        );
+        let present: ManifestAnnotations = serde_json::from_value(complete.clone()).unwrap();
+        assert!(present.build.is_some());
+        let mut expected = complete;
+        expected
+            .as_object_mut()
+            .unwrap()
+            .remove("dev.pichi.build.bootstrapped");
+        assert_eq!(serde_json::to_value(present).unwrap(), expected);
     }
 
     #[test]
@@ -133,7 +177,7 @@ mod tests {
             Some("2026-05-06T14:32:00+05:30")
         );
         assert_eq!(
-            decoded.build.source.as_deref(),
+            decoded.build.as_ref().unwrap().source.as_deref(),
             Some("https://example.org/source")
         );
         assert_eq!(
