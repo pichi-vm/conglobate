@@ -27,7 +27,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             .manifest()
             .layers
             .iter()
-            .any(|layer| matches!(layer, Layer::Pmi(_) | Layer::PmiZstd(_)));
+            .any(|layer| matches!(layer, Layer::Pmi { .. } | Layer::PmiZstd(_)));
         let config = base
             .bootconfig(build.cache())?
             .map(|bytes| BootConfig::inherited(bytes.bytes().to_vec(), base.root()))
@@ -426,7 +426,7 @@ mod tests {
                 manifest
                     .layers
                     .iter()
-                    .any(|layer| matches!(layer, Layer::Pmi(_) | Layer::PmiZstd(_))),
+                    .any(|layer| matches!(layer, Layer::Pmi { .. } | Layer::PmiZstd(_))),
                 boot
             );
             assert_eq!(
@@ -693,7 +693,10 @@ mod tests {
                 .exists();
             assert_eq!(
                 present,
-                !matches!(layer, Layer::Scute(_) | Layer::Pmi(_) | Layer::PmiZstd(_))
+                !matches!(
+                    layer,
+                    Layer::Scute(_) | Layer::Pmi { .. } | Layer::PmiZstd(_)
+                )
             );
             let source = if present {
                 request.output().to_path_buf()

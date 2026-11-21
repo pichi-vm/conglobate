@@ -19,10 +19,13 @@ impl Pmi<'_, '_> {
                 .manifest()
                 .layers
                 .iter()
-                .find(|layer| matches!(layer, Layer::Pmi(_) | Layer::PmiZstd(_)))
+                .find(|layer| matches!(layer, Layer::Pmi { .. } | Layer::PmiZstd(_)))
                 .expect("selected PMI")
                 .clone(),
-            Self::File(file) => Layer::Pmi(file.descriptor()),
+            Self::File(file) => Layer::Pmi {
+                media_type: Default::default(),
+                descriptor: file.descriptor(),
+            },
         }
     }
     pub(super) fn root(&self) -> Option<[u8; 32]> {

@@ -34,7 +34,7 @@ impl Availability {
                     boot: layers.iter().any(|layer| {
                         matches!(
                             layer,
-                            crate::artifact::Layer::Pmi(_) | crate::artifact::Layer::PmiZstd(_)
+                            crate::artifact::Layer::Pmi { .. } | crate::artifact::Layer::PmiZstd(_)
                         )
                     }),
                 })
