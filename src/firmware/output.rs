@@ -76,6 +76,7 @@ impl<'w> FirmwareFile<'w> {
     }
     pub(crate) fn descriptor(&self) -> crate::artifact::PmiDescriptor {
         crate::artifact::PmiDescriptor {
+            media_type: crate::artifact::Compressable::Raw(Default::default()),
             digest: self.digest.clone(),
             size: self.size,
         }

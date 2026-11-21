@@ -31,12 +31,9 @@ impl Availability {
                 let layers = &image.image().manifest().layers;
                 Ok(Self {
                     root: image.root().is_some(),
-                    boot: layers.iter().any(|layer| {
-                        matches!(
-                            layer,
-                            crate::artifact::Layer::Pmi { .. } | crate::artifact::Layer::PmiZstd(_)
-                        )
-                    }),
+                    boot: layers
+                        .iter()
+                        .any(|layer| matches!(layer, crate::artifact::Layer::Pmi(_))),
                 })
             }
         }

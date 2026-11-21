@@ -253,7 +253,11 @@ impl StagedDirectory {
         pending
             .persist(Path::new(&path).join(digest.hex()))
             .map_err(|error| error.error)?;
-        Ok(PmiDescriptor { digest, size })
+        Ok(PmiDescriptor {
+            media_type: crate::artifact::Compressable::Zstd(Default::default()),
+            digest,
+            size,
+        })
     }
     /// Store captured or newly produced small content, deriving its identity
     /// from these bytes. The coordinator supplies the matching descriptor.

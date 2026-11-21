@@ -27,7 +27,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             .manifest()
             .layers
             .iter()
-            .any(|layer| matches!(layer, Layer::Pmi { .. } | Layer::PmiZstd(_)));
+            .any(|layer| matches!(layer, Layer::Pmi(_)));
         let config = base
             .bootconfig(build.cache())?
             .map(|bytes| BootConfig::inherited(bytes.bytes().to_vec(), base.root()))
@@ -426,7 +426,7 @@ mod tests {
                 manifest
                     .layers
                     .iter()
-                    .any(|layer| matches!(layer, Layer::Pmi { .. } | Layer::PmiZstd(_))),
+                    .any(|layer| matches!(layer, Layer::Pmi(_))),
                 boot
             );
             assert_eq!(
@@ -691,13 +691,7 @@ mod tests {
                 .join("blobs/sha256")
                 .join(digest.hex())
                 .exists();
-            assert_eq!(
-                present,
-                !matches!(
-                    layer,
-                    Layer::Scute(_) | Layer::Pmi { .. } | Layer::PmiZstd(_)
-                )
-            );
+            assert_eq!(present, !matches!(layer, Layer::Scute(_) | Layer::Pmi(_)));
             let source = if present {
                 request.output().to_path_buf()
             } else {
