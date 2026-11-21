@@ -16,6 +16,7 @@ mod boot_config_descriptor;
 mod carapace_verity;
 mod compressable;
 mod config;
+mod config_descriptor;
 mod digest;
 mod index;
 mod manifest;
@@ -34,17 +35,15 @@ pub use compressable::Compressable;
 pub use config::{
     Band, Config, Ingress, Interface, Memory, PortSpec, Recommendation, Requirements, Slot, Storage,
 };
+pub use config_descriptor::ConfigDescriptor;
 pub use digest::{Digest, DigestParseError};
 pub use manifest::{
-    CARAPACE_ROOT_ANNOTATION, ConfigDescriptor, Layer, Manifest, ManifestValidationError,
-    PmiDescriptor, ScuteAnnotations, ScuteDescriptor,
+    CARAPACE_ROOT_ANNOTATION, Layer, Manifest, ManifestValidationError, PmiDescriptor,
+    ScuteAnnotations, ScuteDescriptor,
 };
 pub use manifest_annotations::ManifestAnnotations;
 pub use media::Media;
-pub use media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_REQUIREMENTS_V1,
-    MediaType,
-};
+pub use media_type::{MEDIA_TYPE_PICHI_REQUIREMENTS_V1, MediaType};
 pub use oci_annotations::OciAnnotations;
 pub use pichi_artifact::PichiArtifact;
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};

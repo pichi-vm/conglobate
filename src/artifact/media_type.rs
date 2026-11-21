@@ -49,19 +49,10 @@ impl<'de, T: Media> Deserialize<'de> for MediaType<T> {
 /// resource contract for a launchable artifact. A small uncompressed YAML
 /// blob; at most one per manifest.
 ///
-/// Superseded by the config blob ([`MEDIA_TYPE_PICHI_CONFIG_V1`]): the launch
+/// Superseded by the config blob ([`crate::artifact::Config::MEDIA_TYPE`]): the launch
 /// contract now rides in the manifest config, not a layer. Retained during the
 /// migration; new writers MUST NOT emit it.
 pub const MEDIA_TYPE_PICHI_REQUIREMENTS_V1: &str = "application/vnd.pichi.requirements.v1+yaml";
-
-/// pichi image config blob — the OCI 1.1 `config` descriptor's target. Carries
-/// the launch contract (the `requirements` projection of `config.yaml`,
-/// BUILD.md §7.1); replaces the OCI empty-config for pichi artifacts. JSON.
-pub const MEDIA_TYPE_PICHI_CONFIG_V1: &str = "application/vnd.pichi.config.v1+json";
-
-/// OCI 1.1 empty descriptor. Formerly the artifact's config blob (inline
-/// `data: "e30="`); pichi artifacts now use [`MEDIA_TYPE_PICHI_CONFIG_V1`].
-pub const MEDIA_TYPE_OCI_EMPTY_V1: &str = "application/vnd.oci.empty.v1+json";
 
 #[cfg(test)]
 mod tests {
@@ -140,10 +131,9 @@ mod tests {
             "application/vnd.pichi.bootconfig.v1+zstd"
         );
         assert_eq!(
-            MEDIA_TYPE_PICHI_CONFIG_V1,
+            crate::artifact::Config::MEDIA_TYPE,
             "application/vnd.pichi.config.v1+json"
         );
-        assert_eq!(MEDIA_TYPE_OCI_EMPTY_V1, "application/vnd.oci.empty.v1+json");
     }
 
     #[test]
@@ -161,9 +151,8 @@ mod tests {
         assert!(PmiDescriptor::MEDIA_TYPE.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_REQUIREMENTS_V1.starts_with("application/vnd.pichi."));
         assert!(BootConfigDescriptor::MEDIA_TYPE.starts_with("application/vnd.pichi."));
-        assert!(MEDIA_TYPE_PICHI_CONFIG_V1.starts_with("application/vnd.pichi."));
-        assert!(MEDIA_TYPE_PICHI_CONFIG_V1.ends_with("+json"));
-        assert!(MEDIA_TYPE_OCI_EMPTY_V1.starts_with("application/vnd.oci."));
+        assert!(crate::artifact::Config::MEDIA_TYPE.starts_with("application/vnd.pichi."));
+        assert!(crate::artifact::Config::MEDIA_TYPE.ends_with("+json"));
     }
 
     #[test]

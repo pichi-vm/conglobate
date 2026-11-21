@@ -152,25 +152,23 @@ impl AssembledImage {
                     image.image().manifest_bytes().bytes(),
                 )?,
                 None => {
-                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::Manifest::MEDIA_TYPE,"artifactType":crate::artifact::PichiArtifact::MEDIA_TYPE,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
+                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::Manifest::MEDIA_TYPE,"artifactType":crate::artifact::PichiArtifact::MEDIA_TYPE,"layers":[]})
                 }
             };
-            if let Some(requirements) = requirements {
+            if requirements.is_none()
+                && let Some(image) = metadata
+            {
+                let config = &image.image().manifest().config;
+                staged.copy_blob(cache, &config.digest, config.size)?;
+            } else {
                 let bytes = serde_json::to_vec(&crate::artifact::Config {
-                    requirements: requirements.clone(),
+                    requirements: requirements.cloned().unwrap_or_default(),
                     ..Default::default()
                 })?;
                 let digest = staged.store_blob(&bytes)?;
                 manifest["config"] = serde_json::to_value(
                     crate::artifact::ConfigDescriptor::for_config(digest, bytes.len() as u64),
                 )?;
-            } else if let Some(image) = metadata
-                && !image.image().manifest().config.is_empty()
-            {
-                let config = &image.image().manifest().config;
-                staged.copy_blob(cache, &config.digest, config.size)?;
-            } else {
-                staged.store_blob(b"{}")?;
             }
             let annotations = manifest
                 .as_object_mut()
@@ -322,39 +320,30 @@ mod tests {
         blobs: BTreeMap<String, Vec<u8>>,
     }
     impl Input {
-        fn new(empty_config: bool) -> Self {
+        fn new() -> Self {
             Self::with_firmware(
-                empty_config,
                 b"opaque PMI".to_vec(),
                 crate::artifact::PmiDescriptor::MEDIA_TYPE,
             )
         }
-        fn with_firmware(empty_config: bool, pmi: Vec<u8>, media_type: &str) -> Self {
+        fn with_firmware(pmi: Vec<u8>, media_type: &str) -> Self {
             let directory = tempfile::tempdir().unwrap();
             let mut blobs = BTreeMap::new();
             let bootconfig = ruzstd::encoding::compress_to_vec(
                 b"corium.root = old\n".as_slice(),
                 ruzstd::encoding::CompressionLevel::Fastest,
             );
-            let config = if empty_config {
-                b"{}".to_vec()
-            } else {
-                b"{\"requirements\":{}}".to_vec()
-            };
+            let config = serde_json::to_vec(&crate::artifact::Config::default()).unwrap();
             for bytes in [&pmi, &bootconfig, &config] {
                 blobs.insert(
                     Digest::Sha256(Sha256::digest(bytes).into()).to_string(),
                     bytes.clone(),
                 );
             }
-            let config_descriptor = if empty_config {
-                crate::artifact::ConfigDescriptor::canonical()
-            } else {
-                crate::artifact::ConfigDescriptor::for_config(
-                    Digest::Sha256(Sha256::digest(&config).into()),
-                    config.len() as u64,
-                )
-            };
+            let config_descriptor = crate::artifact::ConfigDescriptor::for_config(
+                Digest::Sha256(Sha256::digest(&config).into()),
+                config.len() as u64,
+            );
             let manifest = serde_json::to_vec_pretty(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -382,9 +371,6 @@ mod tests {
             let index_digest = Digest::Sha256(Sha256::digest(&index).into());
             fs::create_dir_all(directory.path().join("blobs/sha256")).unwrap();
             for (digest, bytes) in &blobs {
-                if empty_config && bytes == b"{}" {
-                    continue;
-                }
                 fs::write(
                     directory
                         .path()
@@ -450,7 +436,7 @@ mod tests {
         for algorithm in ["sha1", "sha256"] {
             for context in [".", "nested/context"] {
                 for location in [None, Some("https://example.invalid/source")] {
-                    let input = Input::new(false);
+                    let input = Input::new();
                     let (cache, image) = input.open();
                     let repo = tempfile::tempdir().unwrap();
                     let git = |args: &[&str]| {
@@ -597,7 +583,7 @@ mod tests {
     }
     #[test]
     fn overlay_replaces_only_bootconfig_and_references_input_pmi() {
-        let input = Input::new(false);
+        let input = Input::new();
         let (cache, image) = input.open();
         let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
         let old_digest = old["layers"][1]["digest"].as_str().unwrap();
@@ -638,9 +624,7 @@ mod tests {
     }
     #[test]
     fn inheritance_preserves_descriptors_and_input_output_closure() {
-        for (empty_config, compressed) in
-            [(true, false), (false, false), (true, true), (false, true)]
-        {
+        for compressed in [false, true] {
             let (bytes, media_type) = if compressed {
                 (
                     ruzstd::encoding::compress_to_vec(
@@ -655,7 +639,7 @@ mod tests {
                     crate::artifact::PmiDescriptor::MEDIA_TYPE,
                 )
             };
-            let input = Input::with_firmware(empty_config, bytes, media_type);
+            let input = Input::with_firmware(bytes, media_type);
             let (cache, image) = input.open();
             let parent = tempfile::tempdir().unwrap();
             let destination = parent.path().join("output");
@@ -703,7 +687,7 @@ mod tests {
     }
     #[test]
     fn derived_output_publishes_only_oci_to_new_directory_or_empty_mount() {
-        let input = Input::new(true);
+        let input = Input::new();
         let (cache, image) = input.open();
         let selection = input.selection(&image);
         for empty_mount in [false, true] {
@@ -724,7 +708,7 @@ mod tests {
     }
     #[test]
     fn captured_bootconfig_survives_loss_of_cache_copy() {
-        let input = Input::new(false);
+        let input = Input::new();
         let (cache, image) = input.open();
         let digest = image.image().manifest().layers[1].digest();
         let selection = input.selection(&image);
@@ -755,7 +739,7 @@ mod tests {
     }
     #[test]
     fn missing_config_retains_only_private_staging_for_cleanup() {
-        let input = Input::new(false);
+        let input = Input::new();
         let (cache, image) = input.open();
         let config = &image.image().manifest().config;
         fs::remove_file(
