@@ -12,12 +12,6 @@ pub struct OciAnnotations {
         skip_serializing_if = "Option::is_none"
     )]
     pub created: Option<String>,
-    /// Source repository location; does not grant access to the repository.
-    #[serde(
-        rename = "org.opencontainers.image.source",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub source: Option<String>,
     /// Compatibility hint; platform selection uses the index descriptor.
     #[serde(
         rename = "org.opencontainers.image.architecture",

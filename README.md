@@ -98,8 +98,9 @@ The 28 October 2026 decision in
 entirely. The image manifest carries `dev.pichi.build.commit` (`sha1:<hex>` or
 `sha256:<hex>`), `dev.pichi.build.context` (path in that commit), and
 `dev.pichi.build.plan` / `dev.pichi.build.lock` (paths relative to context).
-`dev.pichi.build.location` is an optional provenance hint. There are no separate
-tree/object-format keys or builder/input/execution/output mirrors. The carapace
+`org.opencontainers.image.source` optionally locates the repository containing
+that commit. There are no separate tree/object-format keys or
+builder/input/execution/output mirrors. The carapace
 tip root is recorded once as `sha256:<hex>` in `dev.pichi.carapace.verity.hash`.
 Per-scute salt and decompressed-size annotations describe verity reconstruction.
 Each newly sealed scute uses its parent root followed by a fresh 32-byte

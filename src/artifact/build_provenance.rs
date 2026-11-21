@@ -24,12 +24,12 @@ pub struct BuildProvenance {
         skip_serializing_if = "Option::is_none"
     )]
     pub lock: Option<String>,
-    /// Repository location hint, if supplied by the caller.
+    /// Repository containing the captured commit, if supplied by the caller.
     #[serde(
-        rename = "dev.pichi.build.location",
+        rename = "org.opencontainers.image.source",
         skip_serializing_if = "Option::is_none"
     )]
-    pub location: Option<String>,
+    pub source: Option<String>,
     /// Whether this build selected a bootstrap tool.
     #[serde(
         rename = "dev.pichi.build.bootstrapped",

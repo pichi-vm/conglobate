@@ -573,7 +573,7 @@ mod tests {
                     context: ".".into(),
                     plan: "plan.yaml".into(),
                     lock: None,
-                    location: None,
+                    source: None,
                     bootstrapped: false.into(),
                 },
                 verity: super::super::CarapaceVerity {

@@ -108,7 +108,7 @@ mod tests {
         }
         let decoded: ManifestAnnotations = serde_json::from_value(value).unwrap();
         assert!(decoded.build.lock.is_none());
-        assert!(decoded.build.location.is_none());
+        assert!(decoded.build.source.is_none());
         assert!(!*decoded.build.bootstrapped);
         for (key, value) in [("commit", "sha1:abcd"), ("bootstrapped", "yes")] {
             assert!(
@@ -133,7 +133,7 @@ mod tests {
             Some("2026-05-06T14:32:00+05:30")
         );
         assert_eq!(
-            decoded.oci.source.as_deref(),
+            decoded.build.source.as_deref(),
             Some("https://example.org/source")
         );
         assert_eq!(

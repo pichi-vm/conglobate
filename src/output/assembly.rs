@@ -176,7 +176,9 @@ impl AssembledImage {
             let annotations = manifest["annotations"]
                 .as_object_mut()
                 .expect("manifest annotations");
-            annotations.retain(|key, _| !key.starts_with("dev.pichi.build."));
+            annotations.retain(|key, _| {
+                !key.starts_with("dev.pichi.build.") && key != "org.opencontainers.image.source"
+            });
             let serde_json::Value::Object(binding) = serde_json::to_value(provenance)? else {
                 unreachable!("build provenance serializes as annotations");
             };
@@ -292,7 +294,8 @@ mod tests {
                     "dev.pichi.build.context": ".",
                     "dev.pichi.build.plan": "old-plan.yaml",
                     "dev.pichi.build.lock": "old-lock.yaml",
-                    "dev.pichi.build.location": "https://example.org/old",
+                    "dev.pichi.build.location": "https://example.org/retired",
+                    "org.opencontainers.image.source": "https://example.org/old",
                     "dev.pichi.build.bootstrapped": "true",
                     "dev.pichi.build.tree": "retired"
                 },
@@ -471,6 +474,7 @@ mod tests {
                     let final_manifest: serde_json::Value =
                         serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
                     let annotations = final_manifest["annotations"].as_object().unwrap();
+                    assert!(!annotations.contains_key("dev.pichi.build.location"));
                     assert_eq!(
                         annotations["dev.pichi.build.commit"],
                         format!("{algorithm}:{commit}")
@@ -480,7 +484,7 @@ mod tests {
                     assert_eq!(annotations["dev.pichi.build.lock"], "config/lock.yaml");
                     assert_eq!(
                         annotations
-                            .get("dev.pichi.build.location")
+                            .get("org.opencontainers.image.source")
                             .and_then(|v| v.as_str()),
                         location
                     );
@@ -489,7 +493,7 @@ mod tests {
                             .keys()
                             .filter(|key| key.starts_with("dev.pichi.build."))
                             .count(),
-                        if location.is_some() { 5 } else { 4 }
+                        4
                     );
                     assert!(!annotations.contains_key("dev.pichi.carapace.verity.hash"));
                     assert_eq!(final_manifest["layers"], manifest["layers"]);
