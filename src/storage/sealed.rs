@@ -219,8 +219,10 @@ impl<'w> Scratch<'w> {
                 size: NonZero::new(bytes)
                     .expect("sealed scute is nonempty")
                     .into(),
-                verity_digest: Digest::Sha256(verity_digest.into()),
-                salt: header.parameters.salt.into(),
+                verity: crate::artifact::ScuteVerity {
+                    digest: Digest::Sha256(verity_digest.into()),
+                    salt: header.parameters.salt.into(),
+                },
             },
         };
         Ok(SealedScute {
@@ -403,13 +405,13 @@ mod tests {
             sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
             assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
             let file_digest = Digest::Sha256(Sha256::digest(&tree).into());
-            assert_eq!(sealed.descriptor().annotations.verity_digest, file_digest);
+            assert_eq!(sealed.descriptor().annotations.verity.digest, file_digest);
             assert_ne!(file_digest, Digest::Sha256(*sealed.root()));
             let header = VerityHeader::decode(tree[..512].try_into().unwrap()).unwrap();
             let salt = header.parameters.salt.as_ref();
             assert_eq!(salt.len(), 64);
             assert_eq!(&salt[..32], parent);
-            assert_eq!(sealed.descriptor().annotations.salt.as_ref(), salt);
+            assert_eq!(sealed.descriptor().annotations.verity.salt.as_ref(), salt);
             assert_eq!(header.parameters.data.count.get(), 2);
             for (index, block) in bytes.as_chunks::<4096>().0.iter().enumerate() {
                 let mut hash = Sha256::new();
@@ -429,7 +431,7 @@ mod tests {
             roots.push(*sealed.root());
             // Host mutation changes its output copy, never the expected identity.
             sealed.files().1.write_all_at(b"changed", 0).unwrap();
-            assert_eq!(sealed.descriptor().annotations.verity_digest, file_digest);
+            assert_eq!(sealed.descriptor().annotations.verity.digest, file_digest);
         }
         assert_ne!(salts[0][32..], salts[1][32..]);
         assert_ne!(roots[0], roots[1]);
@@ -516,7 +518,7 @@ mod tests {
         // One header, one root block, and two leaf hash blocks.
         assert_eq!(tree.len(), 4 * 4096);
         assert_eq!(
-            sealed.descriptor().annotations.verity_digest,
+            sealed.descriptor().annotations.verity.digest,
             Digest::Sha256(Sha256::digest(&tree).into())
         );
         assert_eq!(std::fs::read_dir(control.path()).unwrap().count(), 0);

@@ -405,8 +405,10 @@ pub(crate) mod tests {
                 annotations: crate::artifact::ScuteAnnotations {
                     digest: Digest::Sha256(Sha256::digest(data).into()),
                     size: std::num::NonZeroU64::new(data.len() as u64).unwrap().into(),
-                    verity_digest: Digest::Sha256(Sha256::digest(&tree).into()),
-                    salt: devmap_verity::Salt::new(&parent).unwrap().into(),
+                    verity: crate::artifact::ScuteVerity {
+                        digest: Digest::Sha256(Sha256::digest(&tree).into()),
+                        salt: devmap_verity::Salt::new(&parent).unwrap().into(),
+                    },
                 },
             };
             (
