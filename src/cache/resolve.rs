@@ -81,10 +81,7 @@ impl Cache {
         }
         for layer in &manifest.layers {
             let digest = layer.digest();
-            if matches!(
-                layer,
-                crate::artifact::Layer::Scute { .. } | crate::artifact::Layer::ScuteZstd(_)
-            ) {
+            if matches!(layer, crate::artifact::Layer::Scute(_)) {
                 if self.blob(digest)?.metadata()?.len() != layer.size() {
                     return Err(CacheError::Invalid("scute size mismatch"));
                 }
@@ -197,6 +194,7 @@ mod tests {
                 };
                 let digest = Digest::Sha256(Sha256::digest(&bytes).into());
                 let descriptor = ScuteDescriptor {
+                    media_type: crate::artifact::Compressable::Raw(Default::default()),
                     digest: digest.clone(),
                     size: bytes.len() as u64,
                     annotations: ScuteAnnotations {
@@ -208,12 +206,15 @@ mod tests {
                     },
                 };
                 layers.push(if compressed {
-                    Layer::ScuteZstd(descriptor)
+                    Layer::Scute(crate::artifact::ScuteDescriptor {
+                        media_type: crate::artifact::Compressable::Zstd(Default::default()),
+                        ..descriptor
+                    })
                 } else {
-                    Layer::Scute {
-                        media_type: Default::default(),
-                        descriptor,
-                    }
+                    Layer::Scute(crate::artifact::ScuteDescriptor {
+                        media_type: crate::artifact::Compressable::Raw(Default::default()),
+                        ..descriptor
+                    })
                 });
                 blobs.push((digest, bytes));
                 parent = root;
@@ -329,10 +330,12 @@ mod tests {
             let mut changed = bytes.clone();
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();
-            let scute = fixture.image.manifest().layers.iter().any(|layer| {
-                matches!(layer, Layer::Scute { .. } | Layer::ScuteZstd(_))
-                    && layer.digest() == digest
-            });
+            let scute = fixture
+                .image
+                .manifest()
+                .layers
+                .iter()
+                .any(|layer| matches!(layer, Layer::Scute(_)) && layer.digest() == digest);
             assert_eq!(
                 cache.verify_metadata(&fixture.image).is_ok(),
                 scute,

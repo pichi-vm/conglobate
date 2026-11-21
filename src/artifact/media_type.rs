@@ -45,11 +45,6 @@ impl<'de, T: Media> Deserialize<'de> for MediaType<T> {
     }
 }
 
-/// Scute layer (zstd-compressed). Discriminator: `+zstd` mediaType suffix
-/// (per D-08). Decompressor pipeline runs at pull time; local cache stores
-/// the decompressed bytes per D-10.
-pub const MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD: &str = "application/vnd.pichi.scute.v1+zstd";
-
 /// Uncompressed PMI payload layer.
 pub const MEDIA_TYPE_PICHI_PMI_V1: &str = "application/vnd.pichi.pmi.v1";
 
@@ -140,7 +135,7 @@ mod tests {
             "application/vnd.pichi.scute.v1"
         );
         assert_eq!(
-            MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+            crate::artifact::Zstd::<crate::artifact::ScuteDescriptor>::MEDIA_TYPE,
             "application/vnd.pichi.scute.v1+zstd"
         );
         assert_eq!(MEDIA_TYPE_PICHI_PMI_V1, "application/vnd.pichi.pmi.v1");
@@ -163,8 +158,14 @@ mod tests {
     fn all_constants_have_pichi_prefix_or_oci() {
         assert!(PichiArtifact::MEDIA_TYPE.starts_with("application/vnd.pichi."));
         assert!(ScuteDescriptor::MEDIA_TYPE.starts_with("application/vnd.pichi."));
-        assert!(MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.starts_with("application/vnd.pichi."));
-        assert!(MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.ends_with("+zstd"));
+        assert!(
+            crate::artifact::Zstd::<crate::artifact::ScuteDescriptor>::MEDIA_TYPE
+                .starts_with("application/vnd.pichi.")
+        );
+        assert!(
+            crate::artifact::Zstd::<crate::artifact::ScuteDescriptor>::MEDIA_TYPE
+                .ends_with("+zstd")
+        );
         assert!(MEDIA_TYPE_PICHI_PMI_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_REQUIREMENTS_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD.starts_with("application/vnd.pichi."));
@@ -178,7 +179,7 @@ mod tests {
         // Discriminator pattern from D-08: variants share a stem.
         assert_eq!(
             format!("{}+zstd", ScuteDescriptor::MEDIA_TYPE),
-            MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
+            crate::artifact::Zstd::<crate::artifact::ScuteDescriptor>::MEDIA_TYPE
         );
     }
 }

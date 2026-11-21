@@ -693,10 +693,7 @@ mod tests {
                 .exists();
             assert_eq!(
                 present,
-                !matches!(
-                    layer,
-                    Layer::Scute { .. } | Layer::ScuteZstd(_) | Layer::Pmi(_) | Layer::PmiZstd(_)
-                )
+                !matches!(layer, Layer::Scute(_) | Layer::Pmi(_) | Layer::PmiZstd(_))
             );
             let source = if present {
                 request.output().to_path_buf()
@@ -759,7 +756,7 @@ mod tests {
                         .manifest()
                         .layers
                         .iter()
-                        .filter(|layer| matches!(layer, Layer::Scute { .. }))
+                        .filter(|layer| matches!(layer, Layer::Scute(_)))
                         .count(),
                     1
                 );

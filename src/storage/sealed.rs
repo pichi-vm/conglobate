@@ -211,6 +211,7 @@ impl<'w> Scratch<'w> {
         hash.as_file().sync_all()?;
         blob.as_file().sync_all()?;
         let descriptor = ScuteDescriptor {
+            media_type: crate::artifact::Compressable::Zstd(Default::default()),
             digest: Digest::Sha256(digest.finalize().into()),
             size,
             annotations: ScuteAnnotations {
@@ -818,7 +819,7 @@ mod tests {
             {
                 assert_eq!(
                     layer,
-                    &crate::artifact::Layer::ScuteZstd(produced.descriptor().clone())
+                    &crate::artifact::Layer::Scute(produced.descriptor().clone())
                 );
             }
             if bootstrap {
