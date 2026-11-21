@@ -695,7 +695,7 @@ mod tests {
                 present,
                 !matches!(
                     layer,
-                    Layer::Scute(_) | Layer::ScuteZstd(_) | Layer::Pmi(_) | Layer::PmiZstd(_)
+                    Layer::Scute { .. } | Layer::ScuteZstd(_) | Layer::Pmi(_) | Layer::PmiZstd(_)
                 )
             );
             let source = if present {
@@ -759,7 +759,7 @@ mod tests {
                         .manifest()
                         .layers
                         .iter()
-                        .filter(|layer| matches!(layer, Layer::Scute(_)))
+                        .filter(|layer| matches!(layer, Layer::Scute { .. }))
                         .count(),
                     1
                 );

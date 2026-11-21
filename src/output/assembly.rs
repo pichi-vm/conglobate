@@ -191,7 +191,8 @@ impl AssembledImage {
                     for (index, layer) in base.image().manifest().layers.iter().enumerate() {
                         if matches!(
                             layer,
-                            crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+                            crate::artifact::Layer::Scute { .. }
+                                | crate::artifact::Layer::ScuteZstd(_)
                         ) {
                             layers.push(original["layers"][index].clone());
                         }

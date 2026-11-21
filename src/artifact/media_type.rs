@@ -45,18 +45,6 @@ impl<'de, T: Media> Deserialize<'de> for MediaType<T> {
     }
 }
 
-/// Scute layer (uncompressed).
-///
-/// A scute is a dm-snapshot persistent COW file. The base scute's implicit
-/// origin is dm-zero (an all-zero device of matching size); only non-zero
-/// chunks are recorded as exceptions (per BUILD.md §4 / Phase 42 dm-zero
-/// origin lock). Non-base scutes' origins are the preceding scute's
-/// verity-validated state per the carapace salt-chain.
-///
-/// Phase 43 (`pichi import`) writes scutes following this contract; v0.9
-/// Phase 46 (carapace device) consumes them.
-pub const MEDIA_TYPE_PICHI_SCUTE_V1: &str = "application/vnd.pichi.scute.v1";
-
 /// Scute layer (zstd-compressed). Discriminator: `+zstd` mediaType suffix
 /// (per D-08). Decompressor pipeline runs at pull time; local cache stores
 /// the decompressed bytes per D-10.
@@ -94,6 +82,7 @@ pub const MEDIA_TYPE_OCI_EMPTY_V1: &str = "application/vnd.oci.empty.v1+json";
 mod tests {
     use super::*;
     use crate::artifact::PichiArtifact;
+    use crate::artifact::ScuteDescriptor;
 
     struct Artifact;
     impl Media for Artifact {
@@ -146,7 +135,10 @@ mod tests {
             PichiArtifact::MEDIA_TYPE,
             "application/vnd.pichi.artifact.v1+json"
         );
-        assert_eq!(MEDIA_TYPE_PICHI_SCUTE_V1, "application/vnd.pichi.scute.v1");
+        assert_eq!(
+            ScuteDescriptor::MEDIA_TYPE,
+            "application/vnd.pichi.scute.v1"
+        );
         assert_eq!(
             MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
             "application/vnd.pichi.scute.v1+zstd"
@@ -170,7 +162,7 @@ mod tests {
     #[test]
     fn all_constants_have_pichi_prefix_or_oci() {
         assert!(PichiArtifact::MEDIA_TYPE.starts_with("application/vnd.pichi."));
-        assert!(MEDIA_TYPE_PICHI_SCUTE_V1.starts_with("application/vnd.pichi."));
+        assert!(ScuteDescriptor::MEDIA_TYPE.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.ends_with("+zstd"));
         assert!(MEDIA_TYPE_PICHI_PMI_V1.starts_with("application/vnd.pichi."));
@@ -185,7 +177,7 @@ mod tests {
     fn scute_v1_zstd_is_scute_v1_with_zstd_suffix() {
         // Discriminator pattern from D-08: variants share a stem.
         assert_eq!(
-            format!("{}+zstd", MEDIA_TYPE_PICHI_SCUTE_V1),
+            format!("{}+zstd", ScuteDescriptor::MEDIA_TYPE),
             MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
         );
     }

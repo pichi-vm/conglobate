@@ -401,7 +401,10 @@ pub(crate) mod tests {
                 if compressed {
                     crate::artifact::Layer::ScuteZstd(descriptor)
                 } else {
-                    crate::artifact::Layer::Scute(descriptor)
+                    crate::artifact::Layer::Scute {
+                        media_type: Default::default(),
+                        descriptor,
+                    }
                 },
                 root,
             )
