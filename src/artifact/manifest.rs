@@ -11,12 +11,11 @@
 
 use super::Media;
 use super::{
-    AsString, BootConfigDescriptor, ConfigDescriptor, Digest, ManifestAnnotations, MediaType,
-    PichiArtifact,
+    BootConfigDescriptor, ConfigDescriptor, Digest, ManifestAnnotations, MediaType, PichiArtifact,
+    ScuteAnnotations,
 };
 
 use crate::plan::Version;
-use devmap_verity::Salt;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -132,26 +131,6 @@ pub struct ScuteDescriptor {
     pub size: u64,
     /// Per-scute annotations (D-05).
     pub annotations: ScuteAnnotations,
-}
-
-/// Per-scute annotations (D-05). The salt's prefix MUST equal the previous
-/// scute's verity root for non-base scutes (carapace salt-chain binding —
-/// not enforced here; chain validation is v0.9 Phase 46 carapace work).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ScuteAnnotations {
-    /// Full salt as hex, including the parent-root prefix.
-    #[serde(rename = "dev.pichi.scute.verity.salt")]
-    pub salt: AsString<Salt>,
-    /// Required SHA-256 of the exact decompressed bytes.
-    #[serde(rename = "dev.pichi.scute.digest")]
-    pub digest: Digest,
-    /// Required exact decompressed byte count as a decimal annotation string.
-    #[serde(rename = "dev.pichi.scute.size")]
-    pub size: AsString<std::num::NonZeroU64>,
-    /// Required SHA-256 of the complete generated verity file, including its
-    /// header and padding. This is distinct from the verity root.
-    #[serde(rename = "dev.pichi.scute.verity.digest")]
-    pub verity_digest: Digest,
 }
 
 /// PMI layer descriptor. Digest and size identify the encoded blob bytes.
@@ -289,9 +268,14 @@ impl Manifest {
                     value: size.to_string(),
                 });
             }
-            let parent =
-                d.annotations.salt.as_ref().get(..32).ok_or_else(|| {
-                    ManifestValidationError::BadSalt(d.annotations.salt.to_string())
+            let parent = d
+                .annotations
+                .verity
+                .salt
+                .as_ref()
+                .get(..32)
+                .ok_or_else(|| {
+                    ManifestValidationError::BadSalt(d.annotations.verity.salt.to_string())
                 })?;
             if first_scute != parent.iter().all(|byte| *byte == 0) {
                 return Err(ManifestValidationError::BadScuteOrder(d.digest.clone()));
@@ -317,6 +301,7 @@ impl crate::artifact::Media for PmiDescriptor {
 mod tests {
     use super::*;
     use crate::artifact::PichiArtifact;
+    use devmap_verity::Salt;
     use std::num::NonZeroU64;
 
     #[test]
@@ -420,8 +405,10 @@ mod tests {
         let annotations = ScuteAnnotations {
             digest: Digest::Sha256([0x11; 32]),
             size: NonZeroU64::new(1024).unwrap().into(),
-            verity_digest: Digest::Sha256([0x22; 32]),
-            salt: Salt::new(&[0]).unwrap().into(),
+            verity: crate::artifact::ScuteVerity {
+                digest: Digest::Sha256([0x22; 32]),
+                salt: Salt::new(&[0]).unwrap().into(),
+            },
         };
         let json = serde_json::to_value(&annotations).unwrap();
         let mut missing = json.clone();
@@ -485,7 +472,7 @@ mod tests {
         };
         scute.annotations.digest = scute.digest.clone();
         scute.annotations.size = NonZeroU64::new(scute.size).unwrap().into();
-        scute.annotations.verity_digest = Digest::Sha256([0x34; 32]);
+        scute.annotations.verity.digest = Digest::Sha256([0x34; 32]);
         manifest.validate().unwrap();
         let original = manifest.layers[0].clone();
         let Layer::Scute(scute) = &mut manifest.layers[0] else {
@@ -562,8 +549,10 @@ mod tests {
                 annotations: ScuteAnnotations {
                     digest: Digest::Sha256([0x11; 32]),
                     size: NonZeroU64::new(1024).unwrap().into(),
-                    verity_digest: Digest::Sha256([0x22; 32]),
-                    salt: Salt::new(&[0; 32]).unwrap().into(),
+                    verity: crate::artifact::ScuteVerity {
+                        digest: Digest::Sha256([0x22; 32]),
+                        salt: Salt::new(&[0; 32]).unwrap().into(),
+                    },
                 },
             })],
             annotations: ManifestAnnotations {
@@ -706,10 +695,10 @@ mod tests {
         let Layer::Scute(base) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        base.annotations.salt = Salt::new(&[vec![0; 32], vec![0xab, 0xcd]].concat())
+        base.annotations.verity.salt = Salt::new(&[vec![0; 32], vec![0xab, 0xcd]].concat())
             .unwrap()
             .into();
-        child.annotations.salt = Salt::new(&[0xab; 32]).unwrap().into();
+        child.annotations.verity.salt = Salt::new(&[0xab; 32]).unwrap().into();
         manifest.layers.insert(
             0,
             Layer::Pmi(PmiDescriptor {
@@ -746,7 +735,7 @@ mod tests {
             let Layer::Scute(base) = &mut manifest.layers[0] else {
                 unreachable!()
             };
-            base.annotations.salt = salt.parse::<Salt>().unwrap().into();
+            base.annotations.verity.salt = salt.parse::<Salt>().unwrap().into();
             assert!(matches!(
                 manifest.validate(),
                 Err(ManifestValidationError::BadSalt(_))
@@ -824,8 +813,10 @@ mod tests {
             annotations: ScuteAnnotations {
                 digest: Digest::Sha256([0x11; 32]),
                 size: NonZeroU64::new(1024).unwrap().into(),
-                verity_digest: Digest::Sha256([0x22; 32]),
-                salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
+                verity: crate::artifact::ScuteVerity {
+                    digest: Digest::Sha256([0x22; 32]),
+                    salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
+                },
             },
         };
         let pmi_desc = PmiDescriptor {
@@ -865,8 +856,10 @@ mod tests {
             annotations: ScuteAnnotations {
                 digest: Digest::Sha256([0x11; 32]),
                 size: NonZeroU64::new(1024).unwrap().into(),
-                verity_digest: Digest::Sha256([0x22; 32]),
-                salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
+                verity: crate::artifact::ScuteVerity {
+                    digest: Digest::Sha256([0x22; 32]),
+                    salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
+                },
             },
         };
         let pmi_desc = PmiDescriptor {

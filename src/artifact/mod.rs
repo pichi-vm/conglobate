@@ -27,6 +27,8 @@ mod media_type;
 mod oci_annotations;
 mod pichi_artifact;
 mod reference;
+mod scute_annotations;
+mod scute_verity;
 mod sha1;
 mod zstd;
 
@@ -42,7 +44,7 @@ pub use config_descriptor::ConfigDescriptor;
 pub use digest::{Digest, DigestParseError};
 pub use manifest::{
     CARAPACE_ROOT_ANNOTATION, Layer, Manifest, ManifestValidationError, PmiDescriptor,
-    ScuteAnnotations, ScuteDescriptor,
+    ScuteDescriptor,
 };
 pub use manifest_annotations::ManifestAnnotations;
 pub use media::Media;
@@ -50,6 +52,8 @@ pub use media_type::{MEDIA_TYPE_PICHI_REQUIREMENTS_V1, MediaType};
 pub use oci_annotations::OciAnnotations;
 pub use pichi_artifact::PichiArtifact;
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
+pub use scute_annotations::ScuteAnnotations;
+pub use scute_verity::ScuteVerity;
 pub use sha1::Sha1;
 pub use zstd::Zstd;
 
