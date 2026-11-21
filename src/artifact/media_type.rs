@@ -13,6 +13,38 @@
 //!   level 3; readers must handle either form).
 //! - PMI transport accepts raw bytes or a zstd frame; launchers consume the decoded PMI.
 
+use super::Media;
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+use std::marker::PhantomData;
+
+/// A required wire string whose value is fixed by its format type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MediaType<T: Media>(PhantomData<T>);
+
+impl<T: Media> Default for MediaType<T> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<T: Media> Serialize for MediaType<T> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(T::MEDIA_TYPE)
+    }
+}
+
+impl<'de, T: Media> Deserialize<'de> for MediaType<T> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        if String::deserialize(deserializer)? != T::MEDIA_TYPE {
+            return Err(de::Error::custom(format_args!(
+                "expected media type {}",
+                T::MEDIA_TYPE
+            )));
+        }
+        Ok(Self(PhantomData))
+    }
+}
+
 /// Wrapper artifact type per OCI 1.1 `artifactType`. Carried at the top level
 /// of the manifest (per D-03 — NOT inside `config.mediaType`).
 pub const MEDIA_TYPE_PICHI_ARTIFACT_V1: &str = "application/vnd.pichi.artifact.v1+json";
@@ -65,6 +97,50 @@ pub const MEDIA_TYPE_OCI_EMPTY_V1: &str = "application/vnd.oci.empty.v1+json";
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct Artifact;
+    impl Media for Artifact {
+        const MEDIA_TYPE: &'static str = "application/vnd.example.artifact";
+    }
+
+    struct Pmi;
+    impl Media for Pmi {
+        const MEDIA_TYPE: &'static str = "application/vnd.pichi.pmi.v1";
+    }
+
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Descriptor {
+        Artifact {
+            #[serde(rename = "mediaType")]
+            media_type: MediaType<Artifact>,
+        },
+        Pmi {
+            #[serde(rename = "mediaType")]
+            media_type: MediaType<Pmi>,
+        },
+    }
+
+    #[test]
+    fn fixed_media_type_discriminates_untagged_variants() {
+        for media in [Artifact::MEDIA_TYPE, Pmi::MEDIA_TYPE] {
+            let json = serde_json::json!({"mediaType": media});
+            let value: Descriptor = serde_json::from_value(json).unwrap();
+            let encoded = match value {
+                Descriptor::Artifact { media_type } => serde_json::to_value(media_type).unwrap(),
+                Descriptor::Pmi { media_type } => serde_json::to_value(media_type).unwrap(),
+            };
+            assert_eq!(encoded, media);
+        }
+        for invalid in [
+            serde_json::json!({}),
+            serde_json::json!({"mediaType": "other"}),
+            serde_json::json!({"mediaType": null}),
+            serde_json::json!({"mediaType": 1}),
+        ] {
+            assert!(serde_json::from_value::<Descriptor>(invalid).is_err());
+        }
+    }
 
     #[test]
     fn frozen_wire_strings_match_phase_42_lock() {

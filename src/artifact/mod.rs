@@ -19,6 +19,7 @@ mod digest;
 mod index;
 mod manifest;
 mod manifest_annotations;
+mod media;
 mod media_type;
 mod oci_annotations;
 mod reference;
@@ -35,10 +36,12 @@ pub use manifest::{
     PmiDescriptor, ScuteAnnotations, ScuteDescriptor,
 };
 pub use manifest_annotations::ManifestAnnotations;
+pub use media::Media;
 pub use media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
     MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
     MEDIA_TYPE_PICHI_REQUIREMENTS_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MediaType,
 };
 pub use oci_annotations::OciAnnotations;
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
