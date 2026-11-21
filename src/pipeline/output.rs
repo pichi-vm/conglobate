@@ -366,7 +366,7 @@ mod tests {
                 .iter()
                 .map(|(name, pin)| {
                     serde_json::json!({
-                        "mediaType": crate::artifact::MEDIA_TYPE_OCI_INDEX_V1,
+                        "mediaType": crate::artifact::Index::MEDIA_TYPE,
                         "digest": pin, "size": 0,
                         "annotations": {"org.opencontainers.image.ref.name": name},
                     })
@@ -375,7 +375,7 @@ mod tests {
             fs::write(
                 self.directory.path().join("index.json"),
                 serde_json::to_vec(&serde_json::json!({
-                    "schemaVersion": 2, "mediaType": crate::artifact::MEDIA_TYPE_OCI_INDEX_V1,
+                    "schemaVersion": 2, "mediaType": crate::artifact::Index::MEDIA_TYPE,
                     "manifests": entries,
                 }))
                 .unwrap(),

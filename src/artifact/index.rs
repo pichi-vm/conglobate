@@ -1,11 +1,14 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use super::{Media, MediaType};
 use crate::plan::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub const MEDIA_TYPE_OCI_INDEX_V1: &str = "application/vnd.oci.image.index.v1+json";
+impl Media for Index {
+    const MEDIA_TYPE: &'static str = "application/vnd.oci.image.index.v1+json";
+}
 pub const MEDIA_TYPE_OCI_MANIFEST_V1: &str = "application/vnd.oci.image.manifest.v1+json";
 
 /// OCI index exchanged by the builder, registry, and local image store.
@@ -13,7 +16,7 @@ pub const MEDIA_TYPE_OCI_MANIFEST_V1: &str = "application/vnd.oci.image.manifest
 #[serde(rename_all = "camelCase")]
 pub struct Index {
     pub schema_version: Version<2>,
-    pub media_type: String,
+    pub media_type: MediaType<Index>,
     pub manifests: Vec<IndexDescriptor>,
 }
 
@@ -21,7 +24,7 @@ impl Default for Index {
     fn default() -> Self {
         Self {
             schema_version: Version,
-            media_type: MEDIA_TYPE_OCI_INDEX_V1.into(),
+            media_type: Default::default(),
             manifests: Vec::new(),
         }
     }
@@ -79,6 +82,10 @@ mod tests {
         let text = r#"{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:abcd","size":123}"#;
         let descriptor: IndexDescriptor = serde_json::from_str(text).unwrap();
         assert_eq!(serde_json::to_string(&descriptor).unwrap(), text);
-        assert!(serde_json::from_str::<Index>(r#"{"schemaVersion":2,"mediaType":"x"}"#).is_err());
+        assert!(
+            serde_json::from_str::<Index>(r#"{"schemaVersion":2,"mediaType":"x","manifests":[]}"#)
+                .is_err()
+        );
+        assert!(serde_json::from_str::<Index>(r#"{"schemaVersion":2,"manifests":[]}"#).is_err());
     }
 }
