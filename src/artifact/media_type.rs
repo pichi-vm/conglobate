@@ -54,9 +54,6 @@ impl<'de, T: Media> Deserialize<'de> for MediaType<T> {
 /// migration; new writers MUST NOT emit it.
 pub const MEDIA_TYPE_PICHI_REQUIREMENTS_V1: &str = "application/vnd.pichi.requirements.v1+yaml";
 
-/// Zstd-compressed native Linux boot configuration text accompanying a PMI.
-pub const MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD: &str = "application/vnd.pichi.bootconfig.v1+zstd";
-
 /// pichi image config blob — the OCI 1.1 `config` descriptor's target. Carries
 /// the launch contract (the `requirements` projection of `config.yaml`,
 /// BUILD.md §7.1); replaces the OCI empty-config for pichi artifacts. JSON.
@@ -69,6 +66,7 @@ pub const MEDIA_TYPE_OCI_EMPTY_V1: &str = "application/vnd.oci.empty.v1+json";
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifact::BootConfigDescriptor;
     use crate::artifact::PichiArtifact;
     use crate::artifact::PmiDescriptor;
     use crate::artifact::ScuteDescriptor;
@@ -138,7 +136,7 @@ mod tests {
             "application/vnd.pichi.requirements.v1+yaml"
         );
         assert_eq!(
-            MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
+            BootConfigDescriptor::MEDIA_TYPE,
             "application/vnd.pichi.bootconfig.v1+zstd"
         );
         assert_eq!(
@@ -162,7 +160,7 @@ mod tests {
         );
         assert!(PmiDescriptor::MEDIA_TYPE.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_REQUIREMENTS_V1.starts_with("application/vnd.pichi."));
-        assert!(MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD.starts_with("application/vnd.pichi."));
+        assert!(BootConfigDescriptor::MEDIA_TYPE.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_CONFIG_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_CONFIG_V1.ends_with("+json"));
         assert!(MEDIA_TYPE_OCI_EMPTY_V1.starts_with("application/vnd.oci."));

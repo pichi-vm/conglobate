@@ -247,6 +247,7 @@ impl AssembledImage {
                 let digest = staged.store_blob(&config.bytes)?;
                 layers.push(serde_json::to_value(crate::artifact::Layer::BootConfig(
                     crate::artifact::BootConfigDescriptor {
+                        media_type: Default::default(),
                         digest,
                         size: config.bytes.len() as u64,
                     },

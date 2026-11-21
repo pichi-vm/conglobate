@@ -5,8 +5,8 @@
 //! are content-addressed JSON stored in the blob store; this type provides
 //! parse / serialise / validate / self-digest helpers.
 //!
-//! Phase 42 locks the schema: typed `layers: Vec<Layer>` (internally-
-//! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
+//! Phase 42 locks the schema: typed `layers: Vec<Layer>` (discriminated
+//! by required fixed `mediaType` fields), `ConfigDescriptor` for the OCI 1.1 empty-config
 //! pattern, with field types and `validate()` enforcing the format rules.
 
 use super::Media;
@@ -20,9 +20,7 @@ use devmap_verity::Salt;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::artifact::media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_CONFIG_V1,
-};
+use crate::artifact::media_type::{MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_CONFIG_V1};
 
 /// Algorithm-qualified SHA-256 root of the final scute.
 pub const CARAPACE_ROOT_ANNOTATION: &str = "dev.pichi.carapace.verity.hash";
@@ -122,53 +120,17 @@ impl ConfigDescriptor {
     }
 }
 
-/// Compile-time assertions: ensure `#[serde(rename = ...)]` strings on
-/// `Layer` match the corresponding media-type constants. Any drift
-/// (e.g. constant value updated without updating the serde attribute) will
-/// cause a build error here.
-const _: () = {
-    assert!(
-        const_str_eq(
-            MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-            "application/vnd.pichi.bootconfig.v1+zstd"
-        ),
-        "bootconfig serde rename must match its media type"
-    );
-};
-
-/// Const-compatible byte-by-byte string equality for compile-time assertions.
-const fn const_str_eq(a: &str, b: &str) -> bool {
-    let a = a.as_bytes();
-    let b = b.as_bytes();
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut i = 0;
-    while i < a.len() {
-        if a[i] != b[i] {
-            return false;
-        }
-        i += 1;
-    }
-    true
-}
-
-/// Typed layer descriptor — internally-tagged on `mediaType`.
+/// Layer variants discriminate on their required fixed `mediaType` fields.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "mediaType")]
+#[serde(untagged)]
 #[allow(
     clippy::large_enum_variant,
     reason = "Keep descriptors inline without per-layer allocations"
 )]
 pub enum Layer {
-    /// Zstd-compressed native boot configuration. Requires one PMI.
-    #[serde(rename = "application/vnd.pichi.bootconfig.v1+zstd")]
-    BootConfig(BootConfigDescriptor),
-
-    #[serde(untagged)]
     Scute(ScuteDescriptor),
-    #[serde(untagged)]
     Pmi(PmiDescriptor),
+    BootConfig(BootConfigDescriptor),
 }
 
 impl Layer {
@@ -214,7 +176,7 @@ impl Layer {
                 super::Compressable::Raw(_) => PmiDescriptor::MEDIA_TYPE,
                 super::Compressable::Zstd(_) => crate::artifact::Zstd::<PmiDescriptor>::MEDIA_TYPE,
             },
-            Self::BootConfig(_) => MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
+            Self::BootConfig(_) => BootConfigDescriptor::MEDIA_TYPE,
         }
     }
 }
@@ -491,6 +453,7 @@ mod tests {
                 manifest
                     .layers
                     .push(Layer::BootConfig(BootConfigDescriptor {
+                        media_type: Default::default(),
                         digest: Digest::Sha256([0x34; 32]),
                         size: 12,
                     }));
@@ -510,6 +473,7 @@ mod tests {
     #[test]
     fn boot_config_is_a_compressed_component_requiring_one_pmi() {
         let config = Layer::BootConfig(BootConfigDescriptor {
+            media_type: Default::default(),
             digest: Digest::Sha256([0x34; 32]),
             size: 73,
         });
@@ -521,7 +485,7 @@ mod tests {
         assert_eq!(json["size"], 73);
         assert_eq!(serde_json::from_value::<Layer>(json).unwrap(), config);
         assert!(config.is_zstd_variant());
-        assert_eq!(config.media_type_str(), MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD);
+        assert_eq!(config.media_type_str(), BootConfigDescriptor::MEDIA_TYPE);
 
         for root in [false, true] {
             let mut manifest = sample_base_manifest();
@@ -944,11 +908,11 @@ mod tests {
         ] {
             let mut value = value.clone();
             value["mediaType"] = invalid;
-            assert!(serde_json::from_value::<ScuteDescriptor>(value).is_err());
+            assert!(serde_json::from_value::<Layer>(value).is_err());
         }
         let mut value = value;
         value.as_object_mut().unwrap().remove("mediaType");
-        assert!(serde_json::from_value::<ScuteDescriptor>(value).is_err());
+        assert!(serde_json::from_value::<Layer>(value).is_err());
     }
 
     #[test]
