@@ -146,7 +146,7 @@ impl CapturedBuild {
                 .lock_document()
                 .map(|lock| text(lock.path().as_ref()))
                 .transpose()?,
-            location: request.location().map(str::to_owned),
+            source: request.location().map(str::to_owned),
             bootstrapped: self.graph().bootstrapped().into(),
         })
     }

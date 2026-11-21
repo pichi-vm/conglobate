@@ -275,7 +275,8 @@ single commit object. Accept a full object id (SHA-1 or SHA-256 hex) or a
 ref name; peel annotated tags to the commit. Reject abbreviated object ids,
 missing refs, and non-commit tips. Record the resolved commit in
 `dev.pichi.build.commit`, with `sha1:` or `sha256:` in the value. Optional
-`location` becomes `dev.pichi.build.location`; omit that annotation when absent.
+`location` becomes `org.opencontainers.image.source`; omit that annotation
+when absent.
 The location and local repository path are not authenticated identities. Do not
 record the host `ref` string separately. See [§11.1](#111-image-manifest-annotation-contract).
 
@@ -985,7 +986,7 @@ importer; ordinary complete-layout import cannot consume this output alone.
 
 ### 11.1 Image-manifest annotation contract
 
-The typed annotation view exposes optional OCI creation time, source and
+The typed annotation view exposes optional OCI creation time and
 architecture as informational strings. It preserves creation-time text without
 parsing or normalizing it; producers remain responsible for RFC3339 syntax.
 Platform selection uses the index descriptor, not the architecture annotation.
@@ -1002,14 +1003,14 @@ not only on an index, index descriptor, or configuration blob:
 | `dev.pichi.build.plan` | Required: plan path relative to the selected context |
 | `dev.pichi.build.lock` | Present only when consumed: lock path relative to the context |
 | `dev.pichi.build.bootstrapped` | `"true"` iff this build used a selected bootstrap tool; otherwise absent |
-| `dev.pichi.build.location` | Optional: provenance hint for where to obtain the repository |
+| `org.opencontainers.image.source` | Optional: repository containing the captured Git commit |
 
 The typed manifest requires commit, context, and plan during deserialization;
 missing provenance is not backfilled. Commit identities must contain the full
 SHA-1 or SHA-256 digest. Assembly stamps the captured build binding before its
 first staged-manifest validation and writes only the final manifest.
 
-Location says where to get it; commit says what it is; context selects a path
+Source says where to get it; commit says what it is; context selects a path
 in that commit; plan and lock select paths relative to context. The commit
 value carries its algorithm. There are no separate tree or object-format keys.
 Plan and lock bytes are already bound through the commit and selected paths;
@@ -1017,14 +1018,16 @@ do not mirror their content digests as additional build annotations.
 
 `bootstrapped` is a manifest annotation, never a layer annotation. It records
 this build's direct bootstrap use; all inherited `dev.pichi.build.*` keys are
-replaced. Raw import does not automatically claim a bootstrapped build. The
-marker identifies inputs accepted as publisher-trusted bootstrap roots, not
+replaced. Assembly also replaces `org.opencontainers.image.source`, removing an
+inherited value when the current build supplies no location. The retired
+`dev.pichi.build.location` annotation is not read or emitted. Raw import does
+not automatically claim a bootstrapped build. The marker identifies inputs accepted as publisher-trusted bootstrap roots, not
 an input inventory or proof of confidential-computing attestation. In a mixed
 build, ordinary input branches still require normal auditing. Future build
 attestation must bind actual input measurements, committed source and output;
 this marker does not implement that future attestation.
 
-Location is only a locator, not an authenticated identity. Omit it when no
+Source is only a locator, not an authenticated identity. Omit it when no
 provenance hint is supplied; a local repository path is not an
 identity. Locators must not expose embedded credentials. The host-requested
 `ref` is resolved before publication and is not a separate annotation.
