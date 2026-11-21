@@ -27,7 +27,7 @@ impl FromIndex for Chain {
         let mut parent = root;
         let mut scutes = Vec::new();
         for layer in image.manifest().layers.iter().rev() {
-            if !matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_)) {
+            if !matches!(layer, Layer::Scute { .. } | Layer::ScuteZstd(_)) {
                 continue;
             }
             if parent == [0; 32] {

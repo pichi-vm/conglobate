@@ -83,7 +83,7 @@ impl Cache {
             let digest = layer.digest();
             if matches!(
                 layer,
-                crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+                crate::artifact::Layer::Scute { .. } | crate::artifact::Layer::ScuteZstd(_)
             ) {
                 if self.blob(digest)?.metadata()?.len() != layer.size() {
                     return Err(CacheError::Invalid("scute size mismatch"));
@@ -210,7 +210,10 @@ mod tests {
                 layers.push(if compressed {
                     Layer::ScuteZstd(descriptor)
                 } else {
-                    Layer::Scute(descriptor)
+                    Layer::Scute {
+                        media_type: Default::default(),
+                        descriptor,
+                    }
                 });
                 blobs.push((digest, bytes));
                 parent = root;
@@ -327,7 +330,8 @@ mod tests {
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();
             let scute = fixture.image.manifest().layers.iter().any(|layer| {
-                matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_)) && layer.digest() == digest
+                matches!(layer, Layer::Scute { .. } | Layer::ScuteZstd(_))
+                    && layer.digest() == digest
             });
             assert_eq!(
                 cache.verify_metadata(&fixture.image).is_ok(),
