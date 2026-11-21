@@ -5,9 +5,7 @@ use super::{Cache, CacheError, VerifiedMetadata};
 use crate::artifact::Media as _;
 
 use crate::artifact::{Digest, Manifest, PichiArtifact};
-use crate::artifact::{
-    Index, MEDIA_TYPE_OCI_INDEX_V1 as INDEX, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
-};
+use crate::artifact::{Index, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform};
 use crate::image::IndexDigest;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,9 +68,6 @@ impl Cache {
         let bytes =
             Self::read_metadata_file(self.regular_file(std::path::Path::new("index.json"))?, None)?;
         let index: Index = serde_json::from_slice(&bytes)?;
-        if index.media_type != INDEX {
-            return Err(CacheError::Invalid("invalid local cache index"));
-        }
         Ok(index)
     }
 
@@ -104,11 +99,6 @@ impl Cache {
         let architecture = HostArchitecture::current()?;
         let index = self.metadata(&Digest::Sha256(*pin.bytes()), None)?;
         let parsed: Index = serde_json::from_slice(index.bytes())?;
-        if parsed.media_type != INDEX {
-            return Err(CacheError::Invalid(
-                "lock must reference an OCI image index",
-            ));
-        }
         let mut candidates = parsed.manifests.iter().filter(|descriptor| {
             descriptor.artifact_type.as_deref() == Some(PichiArtifact::MEDIA_TYPE)
                 && descriptor
