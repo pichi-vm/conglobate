@@ -254,7 +254,7 @@ pub(crate) mod tests {
         fn manifest(&self) -> (Digest, Vec<u8>) {
             let manifest = crate::artifact::Manifest {
                 schema_version: Default::default(),
-                media_type: "application/vnd.oci.image.manifest.v1+json".into(),
+                media_type: Default::default(),
                 artifact_type: Default::default(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers: Vec::new(),
@@ -334,7 +334,7 @@ pub(crate) mod tests {
                 if field == "schemaVersion" {
                     "expected version 2"
                 } else {
-                    "envelope"
+                    "expected media type"
                 }
             ));
         }
@@ -409,7 +409,7 @@ pub(crate) mod tests {
         fn manifest_bytes(&self, layers: Vec<crate::artifact::Layer>, root: [u8; 32]) -> Vec<u8> {
             let manifest = crate::artifact::Manifest {
                 schema_version: Default::default(),
-                media_type: "application/vnd.oci.image.manifest.v1+json".into(),
+                media_type: Default::default(),
                 artifact_type: Default::default(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers,

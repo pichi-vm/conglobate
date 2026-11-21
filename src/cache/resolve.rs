@@ -5,7 +5,7 @@ use super::{Cache, CacheError, VerifiedMetadata};
 use crate::artifact::Media as _;
 
 use crate::artifact::{Digest, Manifest, PichiArtifact};
-use crate::artifact::{Index, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform};
+use crate::artifact::{Index, Platform};
 use crate::image::IndexDigest;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -114,7 +114,7 @@ impl Cache {
                 "index has ambiguous host platform entries",
             ));
         }
-        if selected.media_type != MANIFEST {
+        if selected.media_type != Manifest::MEDIA_TYPE {
             return Err(CacheError::Invalid(
                 "selected descriptor is not an image manifest",
             ));
@@ -126,10 +126,6 @@ impl Cache {
         let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
         let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
         manifest.validate()?;
-        // Media type is still checked at this lookup boundary.
-        if manifest.media_type != MANIFEST {
-            return Err(CacheError::Invalid("invalid manifest envelope"));
-        }
         Ok(ResolvedImage {
             manifest_bytes,
             root: manifest.carapace_root()?,
@@ -249,7 +245,7 @@ mod tests {
             };
             let manifest = Manifest {
                 schema_version: Default::default(),
-                media_type: MANIFEST.into(),
+                media_type: Default::default(),
                 artifact_type: Default::default(),
                 config: crate::artifact::ConfigDescriptor::for_config(
                     config_digest.clone(),
