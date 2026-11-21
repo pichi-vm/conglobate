@@ -7,9 +7,11 @@
 //!
 //! Phase 42 locks the schema: typed `layers: Vec<Layer>` (internally-
 //! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
-//! pattern, and `validate()` enforcing all six D-07 rules.
+//! pattern, with field types and `validate()` enforcing the format rules.
 
-use super::{AsString, BootConfigDescriptor, Digest, ManifestAnnotations};
+use super::{
+    AsString, BootConfigDescriptor, Digest, ManifestAnnotations, MediaType, PichiArtifact,
+};
 use crate::is_default::IsDefault;
 
 use crate::plan::Version;
@@ -18,9 +20,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::artifact::media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
-    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_CONFIG_V1,
+    MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD, MEDIA_TYPE_PICHI_SCUTE_V1,
+    MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
 /// Algorithm-qualified SHA-256 root of the final scute.
@@ -36,8 +38,9 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 
 /// pichi OCI artifact manifest (OCI Image Spec 1.1).
 ///
-/// Schema invariants (per CONTEXT.md D-03 / D-07 — enforced by [`Manifest::validate`]):
-/// - Top-level `artifact_type` MUST equal [`MEDIA_TYPE_PICHI_ARTIFACT_V1`].
+/// Schema invariants (per CONTEXT.md D-03 / D-07), enforced by field types and
+/// [`Manifest::validate`]:
+/// - Top-level `artifact_type` is fixed by [`MediaType<PichiArtifact>`].
 /// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
 /// - Scute layers MUST appear in chain order, from base to tip.
 /// - At most ONE PMI, raw or compressed (D-03 — zero pmi = base/non-bootable, one pmi = bootable).
@@ -55,9 +58,9 @@ pub struct Manifest {
     /// the OCI 1.1 image manifest envelope.
     #[serde(rename = "mediaType")]
     pub media_type: String,
-    /// OCI 1.1 wrapper type. MUST be `MEDIA_TYPE_PICHI_ARTIFACT_V1` per D-07 rule 1.
+    /// Fixed Pichi artifact kind, encoded as the OCI `artifactType` string.
     #[serde(rename = "artifactType")]
-    pub artifact_type: String,
+    pub artifact_type: MediaType<PichiArtifact>,
     /// Manifest config descriptor: either the OCI 1.1 empty config (artifacts
     /// with no launch contract) or a real `vnd.pichi.config.v1+json` blob
     /// carrying the launch contract (BUILD.md §7.1).
@@ -285,14 +288,6 @@ pub struct PmiDescriptor {
 /// Validation errors for [`Manifest::validate`] (per D-07).
 #[derive(Debug, Error)]
 pub enum ManifestValidationError {
-    /// D-07 rule 1: wrong `artifactType`.
-    #[error("artifactType must be {expected}, got {actual}")]
-    WrongArtifactType {
-        /// Expected value.
-        expected: String,
-        /// Actual value found.
-        actual: String,
-    },
     /// D-07 rule 2: config descriptor is neither the canonical OCI empty config
     /// nor a `vnd.pichi.config.v1+json` blob.
     #[error(
@@ -383,13 +378,6 @@ impl Manifest {
     /// # Errors
     /// Returns the first violated rule — does NOT collect all errors.
     pub fn validate(&self) -> Result<(), ManifestValidationError> {
-        // Rule 1: artifactType
-        if self.artifact_type != MEDIA_TYPE_PICHI_ARTIFACT_V1 {
-            return Err(ManifestValidationError::WrongArtifactType {
-                expected: MEDIA_TYPE_PICHI_ARTIFACT_V1.to_string(),
-                actual: self.artifact_type.clone(),
-            });
-        }
         // Rule 2: config is either the canonical empty config or a real
         // pichi config blob (vnd.pichi.config.v1+json).
         let c = &self.config;
@@ -475,6 +463,8 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifact::Media as _;
+    use crate::artifact::PichiArtifact;
     use sha2::{Digest as _, Sha256};
     use std::num::NonZeroU64;
 
@@ -699,7 +689,7 @@ mod tests {
         Manifest {
             schema_version: Version,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-            artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+            artifact_type: Default::default(),
             config: ConfigDescriptor::canonical(),
             layers: vec![Layer::Scute(ScuteDescriptor {
                 digest: Digest::Sha256([0x11; 32]),
@@ -768,14 +758,17 @@ mod tests {
     }
 
     #[test]
-    fn validate_rejects_wrong_artifact_type() {
-        let mut m = sample_base_manifest();
-        m.artifact_type = "application/wrong".into();
-        let err = m.validate().unwrap_err();
-        assert!(matches!(
-            err,
-            ManifestValidationError::WrongArtifactType { .. }
-        ));
+    fn deserialization_requires_the_pichi_artifact_type_string() {
+        let value = serde_json::to_value(sample_base_manifest()).unwrap();
+        for invalid in [
+            serde_json::json!("application/wrong"),
+            serde_json::json!(null),
+            serde_json::json!({PichiArtifact::MEDIA_TYPE: null}),
+        ] {
+            let mut value = value.clone();
+            value["artifactType"] = invalid;
+            assert!(serde_json::from_value::<Manifest>(value).is_err());
+        }
     }
 
     #[test]
@@ -935,8 +928,8 @@ mod tests {
 
     #[test]
     fn media_type_constant_used() {
-        // Exercises MEDIA_TYPE_PICHI_ARTIFACT_V1 to satisfy dead_code lint.
-        assert!(MEDIA_TYPE_PICHI_ARTIFACT_V1.starts_with("application/"));
+        // Exercises PichiArtifact::MEDIA_TYPE to satisfy dead_code lint.
+        assert!(PichiArtifact::MEDIA_TYPE.starts_with("application/"));
     }
 
     #[test]

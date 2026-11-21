@@ -22,6 +22,7 @@ mod manifest_annotations;
 mod media;
 mod media_type;
 mod oci_annotations;
+mod pichi_artifact;
 mod reference;
 
 pub use as_string::AsString;
@@ -38,12 +39,12 @@ pub use manifest::{
 pub use manifest_annotations::ManifestAnnotations;
 pub use media::Media;
 pub use media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
-    MEDIA_TYPE_PICHI_REQUIREMENTS_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
-    MediaType,
+    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_CONFIG_V1,
+    MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD, MEDIA_TYPE_PICHI_REQUIREMENTS_V1,
+    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD, MediaType,
 };
 pub use oci_annotations::OciAnnotations;
+pub use pichi_artifact::PichiArtifact;
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
 
 pub use index::{

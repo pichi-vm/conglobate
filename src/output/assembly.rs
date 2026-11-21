@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::artifact::Media as _;
+
 use super::StagedDirectory;
 use crate::artifact::{CARAPACE_ROOT_ANNOTATION, Digest};
 use crate::{
@@ -150,7 +152,7 @@ impl AssembledImage {
                     image.image().manifest_bytes().bytes(),
                 )?,
                 None => {
-                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
+                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1,"artifactType":crate::artifact::PichiArtifact::MEDIA_TYPE,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
                 }
             };
             if let Some(requirements) = requirements {
@@ -277,7 +279,7 @@ impl AssembledImage {
         let index = serde_json::to_vec(&crate::artifact::Index {
             manifests: vec![crate::artifact::IndexDescriptor {
                 media_type: crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1.into(),
-                artifact_type: Some(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into()),
+                artifact_type: Some(crate::artifact::PichiArtifact::MEDIA_TYPE.into()),
                 digest: digest.to_string(),
                 size: manifest.len() as u64,
                 platform: Some(crate::artifact::Platform {
@@ -358,7 +360,7 @@ mod tests {
             let manifest = serde_json::to_vec_pretty(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                "artifactType": crate::artifact::PichiArtifact::MEDIA_TYPE,
                 "config": config_descriptor,
                 "layers": [
                     {"mediaType": media_type, "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
@@ -373,7 +375,7 @@ mod tests {
                 "mediaType": "application/vnd.oci.image.index.v1+json",
                 "manifests": [{
                     "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                    "artifactType": crate::artifact::PichiArtifact::MEDIA_TYPE,
                     "digest": manifest_digest.to_string(), "size": manifest.len(),
                     "platform": {"os": "pichi", "architecture": HostArchitecture::current().unwrap().oci_name()}
                 }]

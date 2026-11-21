@@ -172,6 +172,7 @@ impl VerifiedMetadata {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::artifact::Digest;
+    use crate::artifact::Media as _;
     use crate::cache::Cache;
     use sha2::{Digest as _, Sha256};
     use std::path::PathBuf;
@@ -254,7 +255,7 @@ pub(crate) mod tests {
             let manifest = crate::artifact::Manifest {
                 schema_version: Default::default(),
                 media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-                artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+                artifact_type: Default::default(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers: Vec::new(),
                 annotations: Default::default(),
@@ -264,7 +265,7 @@ pub(crate) mod tests {
         }
         fn descriptor(&self, digest: &Digest, size: usize) -> serde_json::Value {
             serde_json::json!({"mediaType":"application/vnd.oci.image.manifest.v1+json",
-                "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                "artifactType":crate::artifact::PichiArtifact::MEDIA_TYPE,
                 "digest":digest.to_string(),"size":size,
                 "platform":{"os":"pichi","architecture":crate::cache::HostArchitecture::current().unwrap().oci_name()}})
         }
@@ -409,7 +410,7 @@ pub(crate) mod tests {
             let manifest = crate::artifact::Manifest {
                 schema_version: Default::default(),
                 media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-                artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+                artifact_type: Default::default(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers,
                 annotations: crate::artifact::ManifestAnnotations {
@@ -634,7 +635,7 @@ pub(crate) mod tests {
         let store = Store::new();
         let (_, bytes) = store.manifest();
         let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        manifest["artifactType"] = "application/unknown".into();
+        manifest["config"]["size"] = 3.into();
         let bytes = serde_json::to_vec(&manifest).unwrap();
         let digest = store.put(&bytes);
         let index = store.index(vec![store.descriptor(&digest, bytes.len())]);

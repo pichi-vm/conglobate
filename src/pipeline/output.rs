@@ -199,6 +199,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifact::Media as _;
     use crate::{
         artifact::Digest, cache::Cache, cache::tests::ScuteFixture as _, input::CapturedBuild,
     };
@@ -286,8 +287,8 @@ mod tests {
                 layers.push(serde_json::json!({"mediaType":"application/vnd.pichi.bootconfig.v1+zstd", "digest":self.blob(&config), "size":config.len()}));
             }
             let config = serde_json::to_vec(&serde_json::json!({"source":name})).unwrap();
-            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":crate::artifact::ConfigDescriptor::for_config(self.blob(&config).parse().unwrap(),config.len() as u64), "layers":layers,"annotations":annotations})).unwrap();
-            let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "digest":self.blob(&manifest),"size":manifest.len(),"platform":{"os":"pichi","architecture":crate::cache::HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
+            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::PichiArtifact::MEDIA_TYPE, "config":crate::artifact::ConfigDescriptor::for_config(self.blob(&config).parse().unwrap(),config.len() as u64), "layers":layers,"annotations":annotations})).unwrap();
+            let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::PichiArtifact::MEDIA_TYPE, "digest":self.blob(&manifest),"size":manifest.len(),"platform":{"os":"pichi","architecture":crate::cache::HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
             self.pins
                 .insert(format!("registry.test/{name}:1"), self.blob(&index));
         }
