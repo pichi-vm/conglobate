@@ -325,7 +325,7 @@ mod tests {
             Self::with_firmware(
                 empty_config,
                 b"opaque PMI".to_vec(),
-                crate::artifact::MEDIA_TYPE_PICHI_PMI_V1,
+                crate::artifact::PmiDescriptor::MEDIA_TYPE,
             )
         }
         fn with_firmware(empty_config: bool, pmi: Vec<u8>, media_type: &str) -> Self {
@@ -651,7 +651,7 @@ mod tests {
             } else {
                 (
                     b"opaque PMI".to_vec(),
-                    crate::artifact::MEDIA_TYPE_PICHI_PMI_V1,
+                    crate::artifact::PmiDescriptor::MEDIA_TYPE,
                 )
             };
             let input = Input::with_firmware(empty_config, bytes, media_type);

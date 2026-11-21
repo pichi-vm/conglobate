@@ -45,9 +45,6 @@ impl<'de, T: Media> Deserialize<'de> for MediaType<T> {
     }
 }
 
-/// Uncompressed PMI payload layer.
-pub const MEDIA_TYPE_PICHI_PMI_V1: &str = "application/vnd.pichi.pmi.v1";
-
 /// Zstd-compressed PMI transport. The descriptor identifies the encoded bytes;
 /// the consumer verifies and decodes them before passing the PMI to a launcher.
 pub const MEDIA_TYPE_PICHI_PMI_V1_ZSTD: &str = "application/vnd.pichi.pmi.v1+zstd";
@@ -77,6 +74,7 @@ pub const MEDIA_TYPE_OCI_EMPTY_V1: &str = "application/vnd.oci.empty.v1+json";
 mod tests {
     use super::*;
     use crate::artifact::PichiArtifact;
+    use crate::artifact::PmiDescriptor;
     use crate::artifact::ScuteDescriptor;
 
     struct Artifact;
@@ -138,7 +136,7 @@ mod tests {
             crate::artifact::Zstd::<crate::artifact::ScuteDescriptor>::MEDIA_TYPE,
             "application/vnd.pichi.scute.v1+zstd"
         );
-        assert_eq!(MEDIA_TYPE_PICHI_PMI_V1, "application/vnd.pichi.pmi.v1");
+        assert_eq!(PmiDescriptor::MEDIA_TYPE, "application/vnd.pichi.pmi.v1");
         assert_eq!(
             MEDIA_TYPE_PICHI_REQUIREMENTS_V1,
             "application/vnd.pichi.requirements.v1+yaml"
@@ -166,7 +164,7 @@ mod tests {
             crate::artifact::Zstd::<crate::artifact::ScuteDescriptor>::MEDIA_TYPE
                 .ends_with("+zstd")
         );
-        assert!(MEDIA_TYPE_PICHI_PMI_V1.starts_with("application/vnd.pichi."));
+        assert!(PmiDescriptor::MEDIA_TYPE.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_REQUIREMENTS_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_CONFIG_V1.starts_with("application/vnd.pichi."));
