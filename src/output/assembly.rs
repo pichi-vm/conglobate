@@ -152,7 +152,7 @@ impl AssembledImage {
                     image.image().manifest_bytes().bytes(),
                 )?,
                 None => {
-                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1,"artifactType":crate::artifact::PichiArtifact::MEDIA_TYPE,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
+                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::Manifest::MEDIA_TYPE,"artifactType":crate::artifact::PichiArtifact::MEDIA_TYPE,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
                 }
             };
             if let Some(requirements) = requirements {
@@ -278,7 +278,7 @@ impl AssembledImage {
         let digest = staged.store_blob(manifest)?;
         let index = serde_json::to_vec(&crate::artifact::Index {
             manifests: vec![crate::artifact::IndexDescriptor {
-                media_type: crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1.into(),
+                media_type: crate::artifact::Manifest::MEDIA_TYPE.into(),
                 artifact_type: Some(crate::artifact::PichiArtifact::MEDIA_TYPE.into()),
                 digest: digest.to_string(),
                 size: manifest.len() as u64,

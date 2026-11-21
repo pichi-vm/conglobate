@@ -9,6 +9,7 @@
 //! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
 //! pattern, with field types and `validate()` enforcing the format rules.
 
+use super::Media;
 use super::{
     AsString, BootConfigDescriptor, Digest, ManifestAnnotations, MediaType, PichiArtifact,
 };
@@ -36,6 +37,10 @@ const EMPTY_CONFIG_DIGEST: Digest = Digest::Sha256([
 /// Canonical base64 encoding of `{}` (used as inline `data` per OCI 1.1).
 const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 
+impl Media for Manifest {
+    const MEDIA_TYPE: &'static str = "application/vnd.oci.image.manifest.v1+json";
+}
+
 /// pichi OCI artifact manifest (OCI Image Spec 1.1).
 ///
 /// Schema invariants (per CONTEXT.md D-03 / D-07), enforced by field types and
@@ -54,10 +59,8 @@ pub struct Manifest {
     #[serde(rename = "schemaVersion")]
     pub schema_version: Version<2>,
     /// OCI image manifest media type (`application/vnd.oci.image.manifest.v1+json`).
-    /// Carried as `String` (NOT `Option`) per D-03 — the pichi manifest is always
-    /// the OCI 1.1 image manifest envelope.
     #[serde(rename = "mediaType")]
-    pub media_type: String,
+    pub media_type: MediaType<Manifest>,
     /// Fixed Pichi artifact kind, encoded as the OCI `artifactType` string.
     #[serde(rename = "artifactType")]
     pub artifact_type: MediaType<PichiArtifact>,
@@ -463,7 +466,6 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::artifact::Media as _;
     use crate::artifact::PichiArtifact;
     use sha2::{Digest as _, Sha256};
     use std::num::NonZeroU64;
@@ -688,7 +690,7 @@ mod tests {
     fn sample_base_manifest() -> Manifest {
         Manifest {
             schema_version: Version,
-            media_type: "application/vnd.oci.image.manifest.v1+json".into(),
+            media_type: Default::default(),
             artifact_type: Default::default(),
             config: ConfigDescriptor::canonical(),
             layers: vec![Layer::Scute(ScuteDescriptor {

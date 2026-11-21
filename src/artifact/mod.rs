@@ -47,4 +47,4 @@ pub use oci_annotations::OciAnnotations;
 pub use pichi_artifact::PichiArtifact;
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
 
-pub use index::{Index, IndexDescriptor, LayoutMarker, MEDIA_TYPE_OCI_MANIFEST_V1, Platform};
+pub use index::{Index, IndexDescriptor, LayoutMarker, Platform};

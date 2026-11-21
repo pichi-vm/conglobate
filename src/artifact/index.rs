@@ -9,7 +9,6 @@ use std::collections::BTreeMap;
 impl Media for Index {
     const MEDIA_TYPE: &'static str = "application/vnd.oci.image.index.v1+json";
 }
-pub const MEDIA_TYPE_OCI_MANIFEST_V1: &str = "application/vnd.oci.image.manifest.v1+json";
 
 /// OCI index exchanged by the builder, registry, and local image store.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
