@@ -24,7 +24,7 @@ impl AssembledImage {
     fn set_tip_annotation(manifest: &mut serde_json::Value, root: Option<[u8; 32]>) {
         if let Some(root) = root {
             manifest["annotations"][CARAPACE_ROOT_ANNOTATION] =
-                Digest::Sha256(root).to_string().into();
+                <Digest>::Sha256(root).to_string().into();
         }
     }
     /// Stamp the resolved input before hashing and validating the final layout.
@@ -336,7 +336,7 @@ mod tests {
             let config = serde_json::to_vec(&crate::artifact::Config::default()).unwrap();
             for bytes in [&pmi, &bootconfig, &config] {
                 blobs.insert(
-                    Digest::Sha256(Sha256::digest(bytes).into()).to_string(),
+                    <Digest>::Sha256(Sha256::digest(bytes).into()).to_string(),
                     bytes.clone(),
                 );
             }
@@ -350,13 +350,13 @@ mod tests {
                 "artifactType": crate::artifact::PichiArtifact::MEDIA_TYPE,
                 "config": config_descriptor,
                 "layers": [
-                    {"mediaType": media_type, "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
-                    {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": Digest::Sha256(Sha256::digest(&bootconfig).into()).to_string(), "size": bootconfig.len()}
+                    {"mediaType": media_type, "digest": <Digest>::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
+                    {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": <Digest>::Sha256(Sha256::digest(&bootconfig).into()).to_string(), "size": bootconfig.len()}
                 ],
                 "annotations": {"example.org/retain": "exactly"},
                 "x-preserved-extension": {"nested": [1, 2, 3]}
             })).unwrap();
-            let manifest_digest = Digest::Sha256(Sha256::digest(&manifest).into());
+            let manifest_digest: Digest = Digest::Sha256(Sha256::digest(&manifest).into());
             let index = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -368,7 +368,7 @@ mod tests {
                 }]
             })).unwrap();
             blobs.insert(manifest_digest.to_string(), manifest.clone());
-            let index_digest = Digest::Sha256(Sha256::digest(&index).into());
+            let index_digest: Digest = Digest::Sha256(Sha256::digest(&index).into());
             fs::create_dir_all(directory.path().join("blobs/sha256")).unwrap();
             for (digest, bytes) in &blobs {
                 fs::write(
@@ -574,7 +574,7 @@ mod tests {
                     let raw = serde_json::to_vec(&final_manifest).unwrap();
                     assert_eq!(
                         index["manifests"][0]["digest"],
-                        Digest::Sha256(Sha256::digest(&raw).into()).to_string()
+                        <Digest>::Sha256(Sha256::digest(&raw).into()).to_string()
                     );
                     assert_eq!(index["manifests"][0]["size"], raw.len());
                 }

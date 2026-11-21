@@ -233,7 +233,7 @@ mod tests {
             fixture
         }
         fn blob(&self, bytes: &[u8]) -> String {
-            let digest = Digest::Sha256(Sha256::digest(bytes).into());
+            let digest: Digest = Digest::Sha256(Sha256::digest(bytes).into());
             fs::write(
                 self.directory
                     .path()
@@ -261,7 +261,7 @@ mod tests {
                         "dev.pichi.scute.verity.salt": "00".repeat(32),
                         "dev.pichi.scute.digest": digest,
                         "dev.pichi.scute.size": bytes.len().to_string(),
-                        "dev.pichi.scute.verity.digest": Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
+                        "dev.pichi.scute.verity.digest": <Digest>::Sha256(Sha256::digest(&tree).into()).to_string(),
                     }
                 }));
                 // Exercise normalization of explicit default parameters.
@@ -273,7 +273,7 @@ mod tests {
                     annotations[format!("dev.pichi.carapace.verity.{key}")] = value.into();
                 }
                 annotations["dev.pichi.carapace.verity.hash"] =
-                    Digest::Sha256(hash).to_string().into();
+                    <Digest>::Sha256(hash).to_string().into();
             }
             if boot {
                 let bytes = b"opaque PMI".to_vec();
@@ -414,7 +414,7 @@ mod tests {
             if let Some(root) = manifest.carapace_root().unwrap() {
                 assert_eq!(
                     annotations["dev.pichi.carapace.verity.hash"],
-                    Digest::Sha256(root).to_string()
+                    <Digest>::Sha256(root).to_string()
                 );
             }
             for parameter in ["data-block-size", "hash-block-size", "version", "hash-type"] {
