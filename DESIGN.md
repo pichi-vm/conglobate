@@ -589,8 +589,8 @@ Empty images and config without PMI fail. Empty configuration has no artifact
 and does not require a PMI bootconfig reservation.
 
 Launch metadata comes from the selected root's base, otherwise inherited PMI,
-otherwise canonical empty metadata. A newly created root starts empty. Only
-selected root scutes define ancestry; selecting another image's boot component
+otherwise a default Pichi config. A newly created root starts with that default.
+Only selected root scutes define ancestry; selecting another image's boot component
 never imports its root. Build provenance always describes the current build.
 
 An optional top-level `requirements` replaces the output's launch contract:
@@ -604,8 +604,10 @@ requirements:
 It uses the existing artifact requirements schema: memory is in MiB, and
 `interfaces` declares host-provided networking. The engine writes a canonical
 version-1 artifact config. `requirements: {}` clears inherited requirements;
-omitting the field preserves the metadata inheritance above. Requirements apply
-to the final output, not the builder or intermediate stages.
+omitting the field preserves the metadata inheritance above. Every artifact
+references a separately stored `application/vnd.pichi.config.v1+json` blob,
+including artifacts using default requirements. OCI empty configs are not accepted.
+Requirements apply to the final output, not the builder or intermediate stages.
 
 The `requirements.slot` field declares a default transport for attached
 devices: `pci` or `mmio`. Omission means `mmio`; newly serialized configs
@@ -1118,7 +1120,7 @@ are complete. Publication differs by destination:
 
 Neither path overwrites existing entries or publishes before validation.
 
-The resulting layout includes the canonical empty config blob when referenced;
+The resulting layout includes the referenced Pichi config blob;
 replaced, unreferenced blobs are not exported.
 
 ### 11.3 Attestation

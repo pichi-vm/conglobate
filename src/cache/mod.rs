@@ -256,7 +256,13 @@ pub(crate) mod tests {
                 schema_version: Default::default(),
                 media_type: Default::default(),
                 artifact_type: Default::default(),
-                config: crate::artifact::ConfigDescriptor::canonical(),
+                config: {
+                    let bytes = serde_json::to_vec(&crate::artifact::Config::default()).unwrap();
+                    crate::artifact::ConfigDescriptor::for_config(
+                        self.put(&bytes),
+                        bytes.len() as u64,
+                    )
+                },
                 layers: Vec::new(),
                 annotations: Default::default(),
             };
@@ -418,7 +424,13 @@ pub(crate) mod tests {
                 schema_version: Default::default(),
                 media_type: Default::default(),
                 artifact_type: Default::default(),
-                config: crate::artifact::ConfigDescriptor::canonical(),
+                config: {
+                    let bytes = serde_json::to_vec(&crate::artifact::Config::default()).unwrap();
+                    crate::artifact::ConfigDescriptor::for_config(
+                        self.put(&bytes),
+                        bytes.len() as u64,
+                    )
+                },
                 layers,
                 annotations: crate::artifact::ManifestAnnotations {
                     oci: Default::default(),
@@ -642,7 +654,8 @@ pub(crate) mod tests {
         let store = Store::new();
         let (_, bytes) = store.manifest();
         let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        manifest["config"]["size"] = 3.into();
+        manifest["annotations"]["dev.pichi.carapace.verity.hash"] =
+            format!("sha256:{}", "11".repeat(32)).into();
         let bytes = serde_json::to_vec(&manifest).unwrap();
         let digest = store.put(&bytes);
         let index = store.index(vec![store.descriptor(&digest, bytes.len())]);

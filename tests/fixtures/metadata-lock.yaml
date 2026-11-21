@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Metadata-only fixture, not an executable distro input.
 # Comment payloads have no trailing newline in the content-addressed cache.
-# manifest-bytes: {"artifactType":"application/vnd.pichi.artifact.v1+json","config":{"data":"e30=","digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","mediaType":"application/vnd.oci.empty.v1+json","size":2},"layers":[],"mediaType":"application/vnd.oci.image.manifest.v1+json","schemaVersion":2}
-# index-bytes: {"manifests":[{"artifactType":"application/vnd.pichi.artifact.v1+json","digest":"sha256:3f94f2eed9b17e5121440819c4554cac8846de1d1b6095dc4e353edfecfac21c","mediaType":"application/vnd.oci.image.manifest.v1+json","platform":{"architecture":"amd64","os":"pichi"},"size":309}],"mediaType":"application/vnd.oci.image.index.v1+json","schemaVersion":2}
+# manifest-bytes: {"artifactType":"application/vnd.pichi.artifact.v1+json","config":{"digest":"sha256:87f6c64f4649e3ebddc0b4339ca27a6a5612e6e139e3aa2cf7ba916fbdfa1b24","mediaType":"application/vnd.pichi.config.v1+json","size":44},"layers":[],"mediaType":"application/vnd.oci.image.manifest.v1+json","schemaVersion":2}
+# index-bytes: {"manifests":[{"artifactType":"application/vnd.pichi.artifact.v1+json","digest":"sha256:e0172b738eebf34b9effcf00ed4c4dd8366d8546917025bcde9ef995535c18d3","mediaType":"application/vnd.oci.image.manifest.v1+json","platform":{"architecture":"amd64","os":"pichi"},"size":299}],"mediaType":"application/vnd.oci.image.index.v1+json","schemaVersion":2}
 version: 1
 images:
-  qualification.local/metadata:1: sha256:6aa11f9413bb6813bee536d77dfb6474d2365e18f859103a1962499e73963e20
+  qualification.local/metadata:1: sha256:8aa3c5d5fc8634a69fbbd345dc8af2fb8a8327b6e21e701466bcaa223cf74e94

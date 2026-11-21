@@ -76,9 +76,7 @@ impl Cache {
     pub(crate) fn verify_metadata(&self, image: &ResolvedImage) -> Result<(), CacheError> {
         let manifest = image.manifest();
         let config = &manifest.config;
-        if !config.is_empty() {
-            self.verify(&config.digest, config.size)?;
-        }
+        self.verify(&config.digest, config.size)?;
         for layer in &manifest.layers {
             let digest = layer.digest();
             if matches!(layer, crate::artifact::Layer::Scute(_)) {
@@ -238,7 +236,7 @@ mod tests {
                 );
                 blobs.push((digest, bytes.to_vec()));
             }
-            let config = b"{\"requirements\":{}}".to_vec();
+            let config = serde_json::to_vec(&crate::artifact::Config::default()).unwrap();
             let config_digest = Digest::Sha256(Sha256::digest(&config).into());
             let annotations = crate::artifact::ManifestAnnotations {
                 oci: Default::default(),

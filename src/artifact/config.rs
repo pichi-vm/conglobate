@@ -500,6 +500,10 @@ impl Requirements {
     }
 }
 
+impl super::Media for Config {
+    const MEDIA_TYPE: &'static str = "application/vnd.pichi.config.v1+json";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

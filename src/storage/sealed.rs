@@ -823,7 +823,12 @@ mod tests {
                 );
             }
             if bootstrap {
-                assert!(assembled.image().manifest().config.is_empty());
+                let bytes = serde_json::to_vec(&crate::artifact::Config::default()).unwrap();
+                assert_eq!(
+                    assembled.image().manifest().config.digest,
+                    Digest::Sha256(Sha256::digest(&bytes).into())
+                );
+                assert_eq!(assembled.image().manifest().config.size, bytes.len() as u64);
             } else {
                 assert_eq!(assembled.image().manifest().config, config);
             }
