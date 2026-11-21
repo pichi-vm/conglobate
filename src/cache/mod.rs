@@ -387,6 +387,7 @@ pub(crate) mod tests {
                 std::fs::write(directory.join(format!("{size}.deflated")), padded).unwrap();
             }
             let descriptor = crate::artifact::ScuteDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
                 digest: digest.clone(),
                 size: bytes.len() as u64,
                 annotations: crate::artifact::ScuteAnnotations {
@@ -399,12 +400,15 @@ pub(crate) mod tests {
             };
             (
                 if compressed {
-                    crate::artifact::Layer::ScuteZstd(descriptor)
+                    crate::artifact::Layer::Scute(crate::artifact::ScuteDescriptor {
+                        media_type: crate::artifact::Compressable::Zstd(Default::default()),
+                        ..descriptor
+                    })
                 } else {
-                    crate::artifact::Layer::Scute {
-                        media_type: Default::default(),
-                        descriptor,
-                    }
+                    crate::artifact::Layer::Scute(crate::artifact::ScuteDescriptor {
+                        media_type: crate::artifact::Compressable::Raw(Default::default()),
+                        ..descriptor
+                    })
                 },
                 root,
             )

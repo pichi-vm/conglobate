@@ -189,11 +189,7 @@ impl AssembledImage {
                     let original: serde_json::Value =
                         serde_json::from_slice(base.image().manifest_bytes().bytes())?;
                     for (index, layer) in base.image().manifest().layers.iter().enumerate() {
-                        if matches!(
-                            layer,
-                            crate::artifact::Layer::Scute { .. }
-                                | crate::artifact::Layer::ScuteZstd(_)
-                        ) {
+                        if matches!(layer, crate::artifact::Layer::Scute(_)) {
                             layers.push(original["layers"][index].clone());
                         }
                     }
@@ -207,7 +203,7 @@ impl AssembledImage {
                         "produced scute parent differs from selected root"
                     );
                     staged.install_scute(scute)?;
-                    layers.push(serde_json::to_value(crate::artifact::Layer::ScuteZstd(
+                    layers.push(serde_json::to_value(crate::artifact::Layer::Scute(
                         scute.descriptor().clone(),
                     ))?);
                     parent = *scute.root();

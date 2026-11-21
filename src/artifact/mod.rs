@@ -14,6 +14,7 @@
 mod as_string;
 mod boot_config_descriptor;
 mod carapace_verity;
+mod compressable;
 mod config;
 mod digest;
 mod index;
@@ -24,10 +25,12 @@ mod media_type;
 mod oci_annotations;
 mod pichi_artifact;
 mod reference;
+mod zstd;
 
 pub use as_string::AsString;
 pub use boot_config_descriptor::BootConfigDescriptor;
 pub use carapace_verity::CarapaceVerity;
+pub use compressable::Compressable;
 pub use config::{
     Band, Config, Ingress, Interface, Memory, PortSpec, Recommendation, Requirements, Slot, Storage,
 };
@@ -41,10 +44,11 @@ pub use media::Media;
 pub use media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_CONFIG_V1,
     MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD, MEDIA_TYPE_PICHI_REQUIREMENTS_V1,
-    MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD, MediaType,
+    MediaType,
 };
 pub use oci_annotations::OciAnnotations;
 pub use pichi_artifact::PichiArtifact;
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
+pub use zstd::Zstd;
 
 pub use index::{Index, IndexDescriptor, LayoutMarker, Platform};

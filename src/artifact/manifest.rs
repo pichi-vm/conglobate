@@ -22,7 +22,7 @@ use thiserror::Error;
 
 use crate::artifact::media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_CONFIG_V1,
-    MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
 };
 
 /// Algorithm-qualified SHA-256 root of the final scute.
@@ -129,13 +129,6 @@ impl ConfigDescriptor {
 /// cause a build error here.
 const _: () = {
     assert!(
-        const_str_eq(
-            MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
-            "application/vnd.pichi.scute.v1+zstd"
-        ),
-        "Layer::ScuteZstd serde rename must match MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD"
-    );
-    assert!(
         const_str_eq(MEDIA_TYPE_PICHI_PMI_V1, "application/vnd.pichi.pmi.v1"),
         "Layer::Pmi serde rename must match MEDIA_TYPE_PICHI_PMI_V1"
     );
@@ -175,11 +168,11 @@ const fn const_str_eq(a: &str, b: &str) -> bool {
 /// Typed layer descriptor — internally-tagged on `mediaType`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "mediaType")]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "Keep descriptors inline without per-layer allocations"
+)]
 pub enum Layer {
-    /// Zstd-compressed scute layer (per D-08).
-    #[serde(rename = "application/vnd.pichi.scute.v1+zstd")]
-    ScuteZstd(ScuteDescriptor),
-
     /// Uncompressed PMI payload layer.
     #[serde(rename = "application/vnd.pichi.pmi.v1")]
     Pmi(PmiDescriptor),
@@ -191,21 +184,16 @@ pub enum Layer {
     /// Zstd-compressed native boot configuration. Requires one PMI.
     #[serde(rename = "application/vnd.pichi.bootconfig.v1+zstd")]
     BootConfig(BootConfigDescriptor),
-    /// application/vnd.pichi.scute.v1 descriptor.
+
     #[serde(untagged)]
-    Scute {
-        #[serde(rename = "mediaType")]
-        media_type: MediaType<ScuteDescriptor>,
-        #[serde(flatten)]
-        descriptor: ScuteDescriptor,
-    },
+    Scute(ScuteDescriptor),
 }
 
 impl Layer {
     /// The content identity, regardless of layer encoding.
     pub fn digest(&self) -> &Digest {
         match self {
-            Self::Scute { descriptor: d, .. } | Self::ScuteZstd(d) => &d.digest,
+            Self::Scute(d) => &d.digest,
             Self::Pmi(d) | Self::PmiZstd(d) => &d.digest,
             Self::BootConfig(d) => &d.digest,
         }
@@ -214,7 +202,7 @@ impl Layer {
     /// Return the descriptor size regardless of variant.
     pub fn size(&self) -> u64 {
         match self {
-            Self::Scute { descriptor: d, .. } | Self::ScuteZstd(d) => d.size,
+            Self::Scute(d) => d.size,
             Self::Pmi(d) | Self::PmiZstd(d) => d.size,
             Self::BootConfig(d) => d.size,
         }
@@ -224,19 +212,23 @@ impl Layer {
     /// Phase 44 cmd::pull's pipeline composer to decide whether to wrap
     /// the `BlobStore`-side sink in a `ZstdDecodeWriter` (Pitfall 5/12).
     pub fn is_zstd_variant(&self) -> bool {
-        matches!(
-            self,
-            Self::ScuteZstd(_) | Self::PmiZstd(_) | Self::BootConfig(_)
-        )
+        match self {
+            Self::Scute(d) => matches!(d.media_type, super::Compressable::Zstd(_)),
+            Self::Pmi(_) => false,
+            Self::PmiZstd(_) => true,
+            Self::BootConfig(_) => true,
+        }
     }
 
-    /// Return the static mediaType string for this variant. Mirrors the
-    /// `#[serde(rename = "...")]` attribute literals so callers do not
-    /// need to switch on the enum tag separately.
+    /// Return the descriptor's fixed media type.
     pub fn media_type_str(&self) -> &'static str {
         match self {
-            Self::Scute { .. } => ScuteDescriptor::MEDIA_TYPE,
-            Self::ScuteZstd(_) => MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+            Self::Scute(d) => match d.media_type {
+                super::Compressable::Raw(_) => ScuteDescriptor::MEDIA_TYPE,
+                super::Compressable::Zstd(_) => {
+                    crate::artifact::Zstd::<ScuteDescriptor>::MEDIA_TYPE
+                }
+            },
             Self::Pmi(_) => MEDIA_TYPE_PICHI_PMI_V1,
             Self::PmiZstd(_) => MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
             Self::BootConfig(_) => MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
@@ -244,9 +236,11 @@ impl Layer {
     }
 }
 
-/// Scute layer descriptor (used by both `Scute` and `ScuteZstd` variants).
+/// Scute descriptor with an explicit raw or compressed transport.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ScuteDescriptor {
+    #[serde(rename = "mediaType")]
+    pub media_type: super::Compressable<Self>,
     /// Content digest of the blob.
     pub digest: Digest,
     /// Byte size of the blob.
@@ -369,9 +363,7 @@ impl Manifest {
     /// Return `true` if this manifest carries at least one scute layer (i.e.
     /// it describes a carapace, so a verity root anchor is meaningful).
     fn has_scutes(&self) -> bool {
-        self.layers
-            .iter()
-            .any(|l| matches!(l, Layer::Scute { .. } | Layer::ScuteZstd(_)))
+        self.layers.iter().any(|l| matches!(l, Layer::Scute(_)))
     }
 
     /// Validate manifest structure. Scute order starts with a zero-parent base;
@@ -421,18 +413,17 @@ impl Manifest {
         // Full chain continuity is checked when consumers verify the scutes.
         let mut first_scute = true;
         for layer in &self.layers {
-            let (Layer::Scute { descriptor: d, .. } | Layer::ScuteZstd(d)) = layer else {
+            let Layer::Scute(d) = layer else {
                 continue;
             };
             let blocks = d.annotations.data_blocks.get();
             let block_size = self.annotations.verity.data_block_size.bytes().get();
             if blocks.checked_mul(u64::from(block_size)).is_none()
-                || (matches!(layer, Layer::Scute { .. })
-                    && blocks != d.size.div_ceil(u64::from(block_size)))
+                || (!layer.is_zstd_variant() && blocks != d.size.div_ceil(u64::from(block_size)))
             {
                 return Err(ManifestValidationError::BadScuteBlocks(d.digest.clone()));
             }
-            if matches!(layer, Layer::Scute { .. }) && d.annotations.digest != d.digest {
+            if !layer.is_zstd_variant() && d.annotations.digest != d.digest {
                 return Err(ManifestValidationError::BadScuteAnnotation {
                     key: "dev.pichi.scute.digest",
                     value: d.annotations.digest.to_string(),
@@ -440,7 +431,7 @@ impl Manifest {
             }
             let size = d.annotations.size.get();
             if size.div_ceil(u64::from(block_size)) != blocks
-                || (matches!(layer, Layer::Scute { .. }) && size != d.size)
+                || (!layer.is_zstd_variant() && size != d.size)
             {
                 return Err(ManifestValidationError::BadScuteAnnotation {
                     key: "dev.pichi.scute.size",
@@ -626,10 +617,7 @@ mod tests {
     #[test]
     fn validate_content_identities_against_format_and_geometry() {
         let mut manifest = sample_base_manifest();
-        let Layer::Scute {
-            descriptor: scute, ..
-        } = &mut manifest.layers[0]
-        else {
+        let Layer::Scute(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
         scute.annotations.digest = scute.digest.clone();
@@ -637,10 +625,7 @@ mod tests {
         scute.annotations.verity_digest = Digest::Sha256([0x34; 32]);
         manifest.validate().unwrap();
         let original = manifest.layers[0].clone();
-        let Layer::Scute {
-            descriptor: scute, ..
-        } = &mut manifest.layers[0]
-        else {
+        let Layer::Scute(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
         scute.annotations.digest = Digest::Sha256([0xff; 32]);
@@ -653,26 +638,22 @@ mod tests {
         ));
         manifest.layers[0] = original.clone();
         for size in [1023, 1025] {
-            let Layer::Scute {
-                descriptor: scute, ..
-            } = &mut manifest.layers[0]
-            else {
+            let Layer::Scute(scute) = &mut manifest.layers[0] else {
                 unreachable!()
             };
             scute.annotations.size = NonZeroU64::new(size).unwrap().into();
             assert!(manifest.validate().is_err());
         }
-        let Layer::Scute {
-            descriptor: mut compressed,
-            ..
-        } = original
-        else {
+        let Layer::Scute(mut compressed) = original else {
             unreachable!()
         };
         compressed.size = 100;
         // Existing format permits a partial final block in inherited scutes.
         compressed.annotations.size = NonZeroU64::new(1023).unwrap().into();
-        manifest.layers[0] = Layer::ScuteZstd(compressed);
+        manifest.layers[0] = Layer::Scute(crate::artifact::ScuteDescriptor {
+            media_type: crate::artifact::Compressable::Zstd(Default::default()),
+            ..compressed
+        });
         manifest.validate().unwrap();
     }
 
@@ -680,28 +661,26 @@ mod tests {
     fn validate_data_blocks_against_raw_descriptor() {
         for blocks in [1u64, 2, 1024, u64::MAX] {
             let mut manifest = sample_base_manifest();
-            let Layer::Scute {
-                descriptor: scute, ..
-            } = &mut manifest.layers[0]
-            else {
+            let Layer::Scute(scute) = &mut manifest.layers[0] else {
                 unreachable!()
             };
             scute.annotations.data_blocks = std::num::NonZeroU64::new(blocks).unwrap().into();
             assert_eq!(manifest.validate().is_ok(), blocks == 1);
         }
         let mut manifest = sample_base_manifest();
-        let Layer::Scute {
-            descriptor: mut scute,
-            ..
-        } = manifest.layers.remove(0)
-        else {
+        let Layer::Scute(mut scute) = manifest.layers.remove(0) else {
             unreachable!()
         };
         scute.annotations.data_blocks = std::num::NonZeroU64::new(2).unwrap().into();
         scute.annotations.size = NonZeroU64::new(8192).unwrap().into();
-        manifest.layers.push(Layer::ScuteZstd(scute));
+        manifest
+            .layers
+            .push(Layer::Scute(crate::artifact::ScuteDescriptor {
+                media_type: crate::artifact::Compressable::Zstd(Default::default()),
+                ..scute
+            }));
         assert!(manifest.validate().is_ok());
-        let Layer::ScuteZstd(scute) = &mut manifest.layers[0] else {
+        let Layer::Scute(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
         scute.annotations.data_blocks = std::num::NonZeroU64::MAX.into();
@@ -717,20 +696,18 @@ mod tests {
             media_type: Default::default(),
             artifact_type: Default::default(),
             config: ConfigDescriptor::canonical(),
-            layers: vec![Layer::Scute {
-                media_type: Default::default(),
-                descriptor: ScuteDescriptor {
+            layers: vec![Layer::Scute(ScuteDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                digest: Digest::Sha256([0x11; 32]),
+                size: 1024,
+                annotations: ScuteAnnotations {
                     digest: Digest::Sha256([0x11; 32]),
-                    size: 1024,
-                    annotations: ScuteAnnotations {
-                        digest: Digest::Sha256([0x11; 32]),
-                        size: NonZeroU64::new(1024).unwrap().into(),
-                        verity_digest: Digest::Sha256([0x22; 32]),
-                        data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
-                        salt: Salt::new(&[0; 32]).unwrap().into(),
-                    },
+                    size: NonZeroU64::new(1024).unwrap().into(),
+                    verity_digest: Digest::Sha256([0x22; 32]),
+                    data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
+                    salt: Salt::new(&[0; 32]).unwrap().into(),
                 },
-            }],
+            })],
             annotations: ManifestAnnotations {
                 oci: Default::default(),
                 verity: super::super::CarapaceVerity {
@@ -826,10 +803,7 @@ mod tests {
             .parse::<devmap_core::BlockSize<devmap_verity::Constraint>>()
             .unwrap()
             .into();
-        let Layer::Scute {
-            descriptor: scute, ..
-        } = &mut m.layers[0]
-        else {
+        let Layer::Scute(scute) = &mut m.layers[0] else {
             unreachable!()
         };
         scute.annotations.data_blocks = std::num::NonZeroU64::new(scute.size.div_ceil(2048))
@@ -865,18 +839,11 @@ mod tests {
     #[test]
     fn scutes_start_with_one_base_even_among_firmware_layers() {
         let mut manifest = sample_base_manifest();
-        let Layer::Scute {
-            descriptor: mut child,
-            ..
-        } = manifest.layers[0].clone()
-        else {
+        let Layer::Scute(mut child) = manifest.layers[0].clone() else {
             unreachable!()
         };
         // Only the parent prefix is the sentinel; the rest is ordinary salt.
-        let Layer::Scute {
-            descriptor: base, ..
-        } = &mut manifest.layers[0]
-        else {
+        let Layer::Scute(base) = &mut manifest.layers[0] else {
             unreachable!()
         };
         base.annotations.salt = Salt::new(&[vec![0; 32], vec![0xab, 0xcd]].concat())
@@ -890,7 +857,12 @@ mod tests {
                 size: 8192,
             }),
         );
-        manifest.layers.push(Layer::ScuteZstd(child));
+        manifest
+            .layers
+            .push(Layer::Scute(crate::artifact::ScuteDescriptor {
+                media_type: crate::artifact::Compressable::Zstd(Default::default()),
+                ..child
+            }));
         manifest.validate().unwrap();
 
         manifest.layers.swap(1, 2);
@@ -910,10 +882,7 @@ mod tests {
     fn scute_salts_must_contain_a_complete_parent_root() {
         for salt in [String::new(), "00".repeat(31)] {
             let mut manifest = sample_base_manifest();
-            let Layer::Scute {
-                descriptor: base, ..
-            } = &mut manifest.layers[0]
-            else {
+            let Layer::Scute(base) = &mut manifest.layers[0] else {
                 unreachable!()
             };
             base.annotations.salt = salt.parse::<Salt>().unwrap().into();
@@ -967,14 +936,15 @@ mod tests {
         for invalid in [
             serde_json::json!("application/unknown"),
             serde_json::json!(null),
+            serde_json::json!(1),
         ] {
             let mut value = value.clone();
             value["mediaType"] = invalid;
-            assert!(serde_json::from_value::<Layer>(value).is_err());
+            assert!(serde_json::from_value::<ScuteDescriptor>(value).is_err());
         }
         let mut value = value;
         value.as_object_mut().unwrap().remove("mediaType");
-        assert!(serde_json::from_value::<Layer>(value).is_err());
+        assert!(serde_json::from_value::<ScuteDescriptor>(value).is_err());
     }
 
     #[test]
@@ -986,6 +956,7 @@ mod tests {
     #[test]
     fn pichi_layer_is_zstd_variant() {
         let scute_desc = ScuteDescriptor {
+            media_type: crate::artifact::Compressable::Raw(Default::default()),
             digest: Digest::Sha256([0xde; 32]),
             size: 0,
             annotations: ScuteAnnotations {
@@ -1001,19 +972,26 @@ mod tests {
             size: 0,
         };
         assert!(
-            !Layer::Scute {
-                media_type: Default::default(),
-                descriptor: scute_desc.clone()
-            }
+            !Layer::Scute(crate::artifact::ScuteDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                ..scute_desc.clone()
+            })
             .is_zstd_variant()
         );
-        assert!(Layer::ScuteZstd(scute_desc).is_zstd_variant());
+        assert!(
+            Layer::Scute(crate::artifact::ScuteDescriptor {
+                media_type: crate::artifact::Compressable::Zstd(Default::default()),
+                ..scute_desc
+            })
+            .is_zstd_variant()
+        );
         assert!(!Layer::Pmi(pmi_desc).is_zstd_variant());
     }
 
     #[test]
     fn pichi_layer_media_type_str() {
         let scute_desc = ScuteDescriptor {
+            media_type: crate::artifact::Compressable::Raw(Default::default()),
             digest: Digest::Sha256([0xde; 32]),
             size: 0,
             annotations: ScuteAnnotations {
@@ -1029,16 +1007,20 @@ mod tests {
             size: 0,
         };
         assert_eq!(
-            Layer::Scute {
-                media_type: Default::default(),
-                descriptor: scute_desc.clone()
-            }
+            Layer::Scute(crate::artifact::ScuteDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                ..scute_desc.clone()
+            })
             .media_type_str(),
             ScuteDescriptor::MEDIA_TYPE
         );
         assert_eq!(
-            Layer::ScuteZstd(scute_desc).media_type_str(),
-            MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
+            Layer::Scute(crate::artifact::ScuteDescriptor {
+                media_type: crate::artifact::Compressable::Zstd(Default::default()),
+                ..scute_desc
+            })
+            .media_type_str(),
+            crate::artifact::Zstd::<crate::artifact::ScuteDescriptor>::MEDIA_TYPE
         );
         assert_eq!(
             Layer::Pmi(pmi_desc).media_type_str(),

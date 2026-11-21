@@ -27,7 +27,7 @@ impl FromIndex for Chain {
         let mut parent = root;
         let mut scutes = Vec::new();
         for layer in image.manifest().layers.iter().rev() {
-            if !matches!(layer, Layer::Scute { .. } | Layer::ScuteZstd(_)) {
+            if !matches!(layer, Layer::Scute(_)) {
                 continue;
             }
             if parent == [0; 32] {
@@ -97,7 +97,7 @@ impl Cache {
             if hash.metadata()?.len() != header.total_size()? {
                 return Err(CacheError::Invalid("prepared hash extent mismatch"));
             }
-            let data_path = if matches!(layer, Layer::ScuteZstd(_)) || layer.size() != size {
+            let data_path = if layer.is_zstd_variant() || layer.size() != size {
                 directory.join(format!("{size}.deflated"))
             } else {
                 source.clone()
