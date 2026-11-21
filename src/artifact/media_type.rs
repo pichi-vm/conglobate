@@ -45,10 +45,6 @@ impl<'de, T: Media> Deserialize<'de> for MediaType<T> {
     }
 }
 
-/// Zstd-compressed PMI transport. The descriptor identifies the encoded bytes;
-/// the consumer verifies and decodes them before passing the PMI to a launcher.
-pub const MEDIA_TYPE_PICHI_PMI_V1_ZSTD: &str = "application/vnd.pichi.pmi.v1+zstd";
-
 /// `requirements.yaml` launch-contract layer (BUILD.md §7) — the host-facing
 /// resource contract for a launchable artifact. A small uncompressed YAML
 /// blob; at most one per manifest.

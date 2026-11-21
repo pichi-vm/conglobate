@@ -646,7 +646,7 @@ mod tests {
                         b"opaque PMI".as_slice(),
                         ruzstd::encoding::CompressionLevel::Fastest,
                     ),
-                    crate::artifact::MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
+                    crate::artifact::Zstd::<crate::artifact::PmiDescriptor>::MEDIA_TYPE,
                 )
             } else {
                 (

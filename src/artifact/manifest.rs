@@ -22,7 +22,6 @@ use thiserror::Error;
 
 use crate::artifact::media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_CONFIG_V1,
-    MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
 };
 
 /// Algorithm-qualified SHA-256 root of the final scute.
@@ -130,13 +129,6 @@ impl ConfigDescriptor {
 const _: () = {
     assert!(
         const_str_eq(
-            MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
-            "application/vnd.pichi.pmi.v1+zstd"
-        ),
-        "Layer::PmiZstd serde rename must match its media type"
-    );
-    assert!(
-        const_str_eq(
             MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
             "application/vnd.pichi.bootconfig.v1+zstd"
         ),
@@ -169,24 +161,14 @@ const fn const_str_eq(a: &str, b: &str) -> bool {
     reason = "Keep descriptors inline without per-layer allocations"
 )]
 pub enum Layer {
-    /// Zstd-compressed PMI transport; descriptor digest and size cover encoded bytes.
-    #[serde(rename = "application/vnd.pichi.pmi.v1+zstd")]
-    PmiZstd(PmiDescriptor),
-
     /// Zstd-compressed native boot configuration. Requires one PMI.
     #[serde(rename = "application/vnd.pichi.bootconfig.v1+zstd")]
     BootConfig(BootConfigDescriptor),
 
-    /// application/vnd.pichi.pmi.v1 descriptor.
-    #[serde(untagged)]
-    Pmi {
-        #[serde(rename = "mediaType")]
-        media_type: MediaType<PmiDescriptor>,
-        #[serde(flatten)]
-        descriptor: PmiDescriptor,
-    },
     #[serde(untagged)]
     Scute(ScuteDescriptor),
+    #[serde(untagged)]
+    Pmi(PmiDescriptor),
 }
 
 impl Layer {
@@ -194,7 +176,7 @@ impl Layer {
     pub fn digest(&self) -> &Digest {
         match self {
             Self::Scute(d) => &d.digest,
-            Self::Pmi { descriptor: d, .. } | Self::PmiZstd(d) => &d.digest,
+            Self::Pmi(d) => &d.digest,
             Self::BootConfig(d) => &d.digest,
         }
     }
@@ -203,7 +185,7 @@ impl Layer {
     pub fn size(&self) -> u64 {
         match self {
             Self::Scute(d) => d.size,
-            Self::Pmi { descriptor: d, .. } | Self::PmiZstd(d) => d.size,
+            Self::Pmi(d) => d.size,
             Self::BootConfig(d) => d.size,
         }
     }
@@ -214,8 +196,7 @@ impl Layer {
     pub fn is_zstd_variant(&self) -> bool {
         match self {
             Self::Scute(d) => matches!(d.media_type, super::Compressable::Zstd(_)),
-            Self::Pmi { .. } => false,
-            Self::PmiZstd(_) => true,
+            Self::Pmi(d) => matches!(d.media_type, super::Compressable::Zstd(_)),
             Self::BootConfig(_) => true,
         }
     }
@@ -229,8 +210,10 @@ impl Layer {
                     crate::artifact::Zstd::<ScuteDescriptor>::MEDIA_TYPE
                 }
             },
-            Self::Pmi { .. } => PmiDescriptor::MEDIA_TYPE,
-            Self::PmiZstd(_) => MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
+            Self::Pmi(d) => match d.media_type {
+                super::Compressable::Raw(_) => PmiDescriptor::MEDIA_TYPE,
+                super::Compressable::Zstd(_) => crate::artifact::Zstd::<PmiDescriptor>::MEDIA_TYPE,
+            },
             Self::BootConfig(_) => MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
         }
     }
@@ -276,6 +259,8 @@ pub struct ScuteAnnotations {
 /// PMI layer descriptor. Digest and size identify the encoded blob bytes.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PmiDescriptor {
+    #[serde(rename = "mediaType")]
+    pub media_type: super::Compressable<Self>,
     /// Content digest of the PMI blob.
     pub digest: Digest,
     /// Byte size of the PMI blob.
@@ -391,7 +376,7 @@ impl Manifest {
         let pmi_count = self
             .layers
             .iter()
-            .filter(|l| matches!(l, Layer::Pmi { .. } | Layer::PmiZstd(_)))
+            .filter(|l| matches!(l, Layer::Pmi(_)))
             .count();
         if pmi_count > 1 {
             return Err(ManifestValidationError::MultiplePmi(pmi_count));
@@ -472,15 +457,19 @@ mod tests {
     #[test]
     fn pmi_encodings_share_cardinality_and_bootconfig_rules() {
         let descriptor = PmiDescriptor {
+            media_type: crate::artifact::Compressable::Raw(Default::default()),
             digest: Digest::Sha256([0x12; 32]),
             size: 73,
         };
         let variants = [
-            Layer::Pmi {
-                media_type: Default::default(),
-                descriptor: descriptor.clone(),
-            },
-            Layer::PmiZstd(descriptor),
+            Layer::Pmi(crate::artifact::PmiDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                ..descriptor.clone()
+            }),
+            Layer::Pmi(crate::artifact::PmiDescriptor {
+                media_type: crate::artifact::Compressable::Zstd(Default::default()),
+                ..descriptor
+            }),
         ];
         for (encoded, expected_type) in variants.iter().zip([
             "application/vnd.pichi.pmi.v1",
@@ -545,13 +534,11 @@ mod tests {
                 manifest.validate(),
                 Err(ManifestValidationError::BootConfigWithoutPmi)
             ));
-            manifest.layers.push(Layer::Pmi {
-                media_type: Default::default(),
-                descriptor: PmiDescriptor {
-                    digest: Digest::Sha256([0x12; 32]),
-                    size: 4096,
-                },
-            });
+            manifest.layers.push(Layer::Pmi(PmiDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                digest: Digest::Sha256([0x12; 32]),
+                size: 4096,
+            }));
             manifest.validate().unwrap();
             manifest.layers.push(config.clone());
             assert!(matches!(
@@ -769,13 +756,11 @@ mod tests {
     #[test]
     fn validate_accepts_bootable_image_with_one_pmi() {
         let mut m = sample_base_manifest();
-        m.layers.push(Layer::Pmi {
-            media_type: Default::default(),
-            descriptor: PmiDescriptor {
-                digest: Digest::Sha256([0x22; 32]),
-                size: 4096,
-            },
-        });
+        m.layers.push(Layer::Pmi(PmiDescriptor {
+            media_type: crate::artifact::Compressable::Raw(Default::default()),
+            digest: Digest::Sha256([0x22; 32]),
+            size: 4096,
+        }));
         m.validate().unwrap();
     }
 
@@ -832,13 +817,11 @@ mod tests {
     fn validate_rejects_multiple_pmi_layers() {
         let mut m = sample_base_manifest();
         for _ in 0..2 {
-            m.layers.push(Layer::Pmi {
-                media_type: Default::default(),
-                descriptor: PmiDescriptor {
-                    digest: Digest::Sha256([0x00; 32]),
-                    size: 1,
-                },
-            });
+            m.layers.push(Layer::Pmi(PmiDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                digest: Digest::Sha256([0x00; 32]),
+                size: 1,
+            }));
         }
         assert!(matches!(
             m.validate().unwrap_err(),
@@ -871,13 +854,11 @@ mod tests {
         child.annotations.salt = Salt::new(&[0xab; 32]).unwrap().into();
         manifest.layers.insert(
             0,
-            Layer::Pmi {
-                media_type: Default::default(),
-                descriptor: PmiDescriptor {
-                    digest: Digest::Sha256([0x44; 32]),
-                    size: 8192,
-                },
-            },
+            Layer::Pmi(PmiDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                digest: Digest::Sha256([0x44; 32]),
+                size: 8192,
+            }),
         );
         manifest
             .layers
@@ -944,13 +925,11 @@ mod tests {
         // verity annotations are not required.
         let mut m = sample_base_manifest();
         m.layers.clear();
-        m.layers.push(Layer::Pmi {
-            media_type: Default::default(),
-            descriptor: PmiDescriptor {
-                digest: Digest::Sha256([0x22; 32]),
-                size: 4096,
-            },
-        });
+        m.layers.push(Layer::Pmi(PmiDescriptor {
+            media_type: crate::artifact::Compressable::Raw(Default::default()),
+            digest: Digest::Sha256([0x22; 32]),
+            size: 4096,
+        }));
         m.annotations = Default::default();
         m.validate().unwrap();
     }
@@ -993,6 +972,7 @@ mod tests {
             },
         };
         let pmi_desc = PmiDescriptor {
+            media_type: crate::artifact::Compressable::Raw(Default::default()),
             digest: Digest::Sha256([0xbe; 32]),
             size: 0,
         };
@@ -1011,10 +991,10 @@ mod tests {
             .is_zstd_variant()
         );
         assert!(
-            !Layer::Pmi {
-                media_type: Default::default(),
-                descriptor: pmi_desc
-            }
+            !Layer::Pmi(crate::artifact::PmiDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                ..pmi_desc
+            })
             .is_zstd_variant()
         );
     }
@@ -1034,6 +1014,7 @@ mod tests {
             },
         };
         let pmi_desc = PmiDescriptor {
+            media_type: crate::artifact::Compressable::Raw(Default::default()),
             digest: Digest::Sha256([0xbe; 32]),
             size: 0,
         };
@@ -1054,10 +1035,10 @@ mod tests {
             crate::artifact::Zstd::<crate::artifact::ScuteDescriptor>::MEDIA_TYPE
         );
         assert_eq!(
-            Layer::Pmi {
-                media_type: Default::default(),
-                descriptor: pmi_desc
-            }
+            Layer::Pmi(crate::artifact::PmiDescriptor {
+                media_type: crate::artifact::Compressable::Raw(Default::default()),
+                ..pmi_desc
+            })
             .media_type_str(),
             PmiDescriptor::MEDIA_TYPE
         );

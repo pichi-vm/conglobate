@@ -19,13 +19,10 @@ impl Pmi<'_, '_> {
                 .manifest()
                 .layers
                 .iter()
-                .find(|layer| matches!(layer, Layer::Pmi { .. } | Layer::PmiZstd(_)))
+                .find(|layer| matches!(layer, Layer::Pmi(_)))
                 .expect("selected PMI")
                 .clone(),
-            Self::File(file) => Layer::Pmi {
-                media_type: Default::default(),
-                descriptor: file.descriptor(),
-            },
+            Self::File(file) => Layer::Pmi(file.descriptor()),
         }
     }
     pub(super) fn root(&self) -> Option<[u8; 32]> {
@@ -44,7 +41,7 @@ impl Pmi<'_, '_> {
         let layer = self.source_layer();
         match self {
             Self::Inherited(_) => Ok(layer),
-            Self::File(file) => Ok(Layer::PmiZstd(staged.store_pmi(
+            Self::File(file) => Ok(Layer::Pmi(staged.store_pmi(
                 file.reader(),
                 layer.digest(),
                 layer.size(),
@@ -87,7 +84,8 @@ mod tests {
         let assembled = AssembledImage::components(&cache, &selection, None, &destination).unwrap();
         let layers = &assembled.image().manifest().layers;
         assert_eq!(layers.len(), 1);
-        let Layer::PmiZstd(descriptor) = &layers[0] else {
+        assert!(layers[0].is_zstd_variant());
+        let Layer::Pmi(descriptor) = &layers[0] else {
             panic!("new PMI must use compressed transport")
         };
         let descriptor = descriptor.clone();
