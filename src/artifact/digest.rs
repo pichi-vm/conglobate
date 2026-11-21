@@ -3,14 +3,20 @@
 
 //! Content-addressable digests. See crate-level docs for D-01.
 
-use std::fmt;
-use std::str::FromStr;
-
+use super::Sha1;
+use std::{convert::Infallible, fmt, str::FromStr};
 use thiserror::Error;
 
-/// Typed digest sum-type. Per D-01.
+/// Typed digest, with SHA-1 uninhabited unless its byte storage is enabled.
+///
+/// ```compile_fail
+/// use conglobate::artifact::Digest;
+/// let _: Digest = Digest::Sha1([0; 20]);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Digest {
+pub enum Digest<S = Infallible> {
+    /// SHA-1, available with `Digest<[u8; 20]>`.
+    Sha1(S),
     /// SHA-256 (32 bytes).
     Sha256([u8; 32]),
 }
@@ -18,8 +24,8 @@ pub enum Digest {
 /// Errors from parsing a digest string.
 #[derive(Debug, Error)]
 pub enum DigestParseError {
-    /// Algorithm prefix not recognised (only `sha256:` is supported in v0.8).
-    #[error("unknown algorithm prefix: expected 'sha256:', got '{0}'")]
+    /// Algorithm prefix not supported by this digest type.
+    #[error("unsupported digest algorithm: '{0}'")]
     UnknownAlgorithm(String),
     /// Hex decoding failed.
     #[error("invalid hex in digest: {0}")]
@@ -34,74 +40,79 @@ pub enum DigestParseError {
     },
 }
 
-impl Digest {
-    /// Return the algorithm name string (for OCI media-type prefix matching).
+impl<S: Sha1> Digest<S> {
+    /// Return the algorithm name.
     pub fn algo(&self) -> &'static str {
         match self {
+            Self::Sha1(_) => "sha1",
             Self::Sha256(_) => "sha256",
         }
     }
 
-    /// The raw 32-byte SHA-256 digest. Callers that need the bare bytes (e.g.
-    /// dm-verity salt/uuid derivation) use this instead of re-hex-decoding the
-    /// `Display` form.
-    #[must_use]
-    pub fn as_sha256_array(&self) -> [u8; 32] {
-        match self {
-            Self::Sha256(b) => *b,
-        }
-    }
-
-    /// Return the lowercase hex string (64 chars for SHA-256).
+    /// Return the lowercase hexadecimal digest.
     pub fn hex(&self) -> String {
-        match self {
-            Self::Sha256(b) => hex::encode(b),
-        }
+        hex::encode(self.as_bytes())
     }
 
     /// Return the raw bytes of the digest.
     pub fn as_bytes(&self) -> &[u8] {
         match self {
-            Self::Sha256(b) => b,
+            Self::Sha1(bytes) => bytes.as_bytes(),
+            Self::Sha256(bytes) => bytes,
         }
     }
 }
 
-impl FromStr for Digest {
+impl Digest {
+    /// Return the fixed SHA-256 bytes; this digest cannot contain SHA-1.
+    #[must_use]
+    pub fn as_sha256_array(&self) -> [u8; 32] {
+        match self {
+            Self::Sha1(never) => match *never {},
+            Self::Sha256(bytes) => *bytes,
+        }
+    }
+}
+
+pub(super) fn decode<const N: usize>(text: &str) -> Result<[u8; N], DigestParseError> {
+    if text.len() != 2 * N {
+        return Err(DigestParseError::WrongLength {
+            expected: 2 * N,
+            actual: text.len(),
+        });
+    }
+    let mut bytes = [0; N];
+    hex::decode_to_slice(text, &mut bytes)?;
+    Ok(bytes)
+}
+
+impl<S: Sha1> FromStr for Digest<S> {
     type Err = DigestParseError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(hex_str) = s.strip_prefix("sha256:") {
-            if hex_str.len() != 64 {
-                return Err(DigestParseError::WrongLength {
-                    expected: 64,
-                    actual: hex_str.len(),
-                });
-            }
-            let bytes = hex::decode(hex_str)?;
-            let mut arr = [0u8; 32];
-            arr.copy_from_slice(&bytes);
-            Ok(Self::Sha256(arr))
-        } else {
-            let prefix = s.split(':').next().unwrap_or(s);
-            Err(DigestParseError::UnknownAlgorithm(prefix.to_string()))
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        match text.split_once(':') {
+            Some(("sha1", value)) => S::from_hex(value).map(Self::Sha1),
+            Some(("sha256", value)) => decode(value).map(Self::Sha256),
+            _ => Err(DigestParseError::UnknownAlgorithm(
+                text.split(':').next().unwrap_or(text).into(),
+            )),
         }
     }
 }
 
-impl fmt::Display for Digest {
+impl<S: Sha1> fmt::Display for Digest<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.algo(), self.hex())
     }
 }
 
-impl serde::Serialize for Digest {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl<S: Sha1> serde::Serialize for Digest<S> {
+    fn serialize<T: serde::Serializer>(&self, serializer: T) -> Result<T::Ok, T::Error> {
         serializer.collect_str(self)
     }
 }
 
-impl<'de> serde::Deserialize<'de> for Digest {
+impl<'de, S: Sha1> serde::Deserialize<'de> for Digest<S> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let text = <String as serde::Deserialize>::deserialize(deserializer)?;
         text.parse().map_err(serde::de::Error::custom)
@@ -132,19 +143,19 @@ mod tests {
 
     #[test]
     fn algo_returns_sha256() {
-        let d = Digest::Sha256([0x42; 32]);
+        let d: Digest = Digest::Sha256([0x42; 32]);
         assert_eq!(d.algo(), "sha256");
     }
 
     #[test]
     fn hex_length_is_64() {
-        let d = Digest::Sha256([0x42; 32]);
+        let d: Digest = Digest::Sha256([0x42; 32]);
         assert_eq!(d.hex().len(), 64);
     }
 
     #[test]
     fn as_bytes_length_is_32() {
-        let d = Digest::Sha256([0x42; 32]);
+        let d: Digest = Digest::Sha256([0x42; 32]);
         assert_eq!(d.as_bytes().len(), 32);
     }
 
@@ -172,5 +183,31 @@ mod tests {
         let bad_hex = "z".repeat(64);
         let err = format!("sha256:{bad_hex}").parse::<Digest>().unwrap_err();
         assert!(matches!(err, DigestParseError::InvalidHex(_)));
+    }
+
+    #[test]
+    fn sha1_requires_enabled_storage() {
+        let text = format!("sha1:{}", "AB".repeat(20));
+        assert!(matches!(
+            text.parse::<Digest>(),
+            Err(DigestParseError::UnknownAlgorithm(_))
+        ));
+        let digest: Digest<[u8; 20]> = text.parse().unwrap();
+        assert_eq!(digest, Digest::Sha1([0xab; 20]));
+        assert_eq!(digest.to_string(), text.to_lowercase());
+        let json = serde_json::to_string(&digest).unwrap();
+        assert!(serde_json::from_str::<Digest>(&json).is_err());
+        assert_eq!(
+            serde_json::from_str::<Digest<[u8; 20]>>(&json).unwrap(),
+            digest
+        );
+        let sha256 = format!("sha256:{}", "AB".repeat(32));
+        assert_eq!(
+            sha256.parse::<Digest<[u8; 20]>>().unwrap(),
+            Digest::Sha256([0xab; 32])
+        );
+        for value in ["ab".repeat(19), "ab".repeat(21), "gg".repeat(20)] {
+            assert!(format!("sha1:{value}").parse::<Digest<[u8; 20]>>().is_err());
+        }
     }
 }

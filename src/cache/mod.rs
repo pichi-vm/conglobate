@@ -290,7 +290,7 @@ pub(crate) mod tests {
         let selected = store.descriptor(&digest, bytes.len());
         let mut unrelated = selected.clone();
         unrelated["platform"]["os"] = "linux".into();
-        unrelated["digest"] = Digest::Sha256(Sha256::digest(b"not cached").into())
+        unrelated["digest"] = <Digest>::Sha256(Sha256::digest(b"not cached").into())
             .to_string()
             .into();
         let pin = store.index(vec![unrelated, selected]);
@@ -352,7 +352,7 @@ pub(crate) mod tests {
         let (_, bytes) = store.manifest();
         let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         let config = b"{}";
-        let config_digest = Digest::Sha256(Sha256::digest(config).into());
+        let config_digest: Digest = Digest::Sha256(Sha256::digest(config).into());
         manifest["config"] = serde_json::json!({
             "mediaType":"application/vnd.pichi.config.v1+json",
             "digest":config_digest.to_string(),"size":config.len()});
@@ -475,7 +475,7 @@ pub(crate) mod tests {
         assert_eq!(index["manifests"][0]["size"], manifest.len());
         assert_eq!(
             index["manifests"][0]["digest"],
-            Digest::Sha256(Sha256::digest(manifest.as_bytes()).into()).to_string()
+            <Digest>::Sha256(Sha256::digest(manifest.as_bytes()).into()).to_string()
         );
     }
 

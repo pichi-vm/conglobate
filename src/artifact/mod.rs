@@ -26,6 +26,7 @@ mod media_type;
 mod oci_annotations;
 mod pichi_artifact;
 mod reference;
+mod sha1;
 mod zstd;
 
 pub use as_string::AsString;
@@ -47,6 +48,7 @@ pub use media_type::{MEDIA_TYPE_PICHI_REQUIREMENTS_V1, MediaType};
 pub use oci_annotations::OciAnnotations;
 pub use pichi_artifact::PichiArtifact;
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
+pub use sha1::Sha1;
 pub use zstd::Zstd;
 
 pub use index::{Index, IndexDescriptor, LayoutMarker, Platform};

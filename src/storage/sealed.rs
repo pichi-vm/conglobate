@@ -770,7 +770,8 @@ mod tests {
             br#"{"version":1,"requirements":{"slot":"mmio","memory":{"required":1024}}}"#
         );
         let index = std::fs::read(output.join("index.json")).unwrap();
-        let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
+        let digest: crate::artifact::Digest =
+            crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
         std::fs::write(output.join("blobs/sha256").join(digest.hex()), &index).unwrap();
         let cache = Cache::open(&output).unwrap();
         let base_image = crate::input::CheckedImage::verify(
