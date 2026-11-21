@@ -45,10 +45,6 @@ impl<'de, T: Media> Deserialize<'de> for MediaType<T> {
     }
 }
 
-/// Wrapper artifact type per OCI 1.1 `artifactType`. Carried at the top level
-/// of the manifest (per D-03 — NOT inside `config.mediaType`).
-pub const MEDIA_TYPE_PICHI_ARTIFACT_V1: &str = "application/vnd.pichi.artifact.v1+json";
-
 /// Scute layer (uncompressed).
 ///
 /// A scute is a dm-snapshot persistent COW file. The base scute's implicit
@@ -97,6 +93,7 @@ pub const MEDIA_TYPE_OCI_EMPTY_V1: &str = "application/vnd.oci.empty.v1+json";
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifact::PichiArtifact;
 
     struct Artifact;
     impl Media for Artifact {
@@ -146,7 +143,7 @@ mod tests {
     fn frozen_wire_strings_match_phase_42_lock() {
         // Exact wire strings — any drift breaks OCI consumers.
         assert_eq!(
-            MEDIA_TYPE_PICHI_ARTIFACT_V1,
+            PichiArtifact::MEDIA_TYPE,
             "application/vnd.pichi.artifact.v1+json"
         );
         assert_eq!(MEDIA_TYPE_PICHI_SCUTE_V1, "application/vnd.pichi.scute.v1");
@@ -172,7 +169,7 @@ mod tests {
 
     #[test]
     fn all_constants_have_pichi_prefix_or_oci() {
-        assert!(MEDIA_TYPE_PICHI_ARTIFACT_V1.starts_with("application/vnd.pichi."));
+        assert!(PichiArtifact::MEDIA_TYPE.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.ends_with("+zstd"));

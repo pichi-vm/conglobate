@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, VerifiedMetadata};
-use crate::artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
+use crate::artifact::Media as _;
+
+use crate::artifact::{Digest, Manifest, PichiArtifact};
 use crate::artifact::{
     Index, MEDIA_TYPE_OCI_INDEX_V1 as INDEX, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
 };
@@ -108,7 +110,7 @@ impl Cache {
             ));
         }
         let mut candidates = parsed.manifests.iter().filter(|descriptor| {
-            descriptor.artifact_type.as_deref() == Some(MEDIA_TYPE_PICHI_ARTIFACT_V1)
+            descriptor.artifact_type.as_deref() == Some(PichiArtifact::MEDIA_TYPE)
                 && descriptor
                     .platform
                     .as_ref()
@@ -258,7 +260,7 @@ mod tests {
             let manifest = Manifest {
                 schema_version: Default::default(),
                 media_type: MANIFEST.into(),
-                artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+                artifact_type: Default::default(),
                 config: crate::artifact::ConfigDescriptor::for_config(
                     config_digest.clone(),
                     config.len() as u64,
