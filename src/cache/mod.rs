@@ -382,7 +382,6 @@ pub(crate) mod tests {
         ) -> (crate::artifact::Layer, [u8; 32]) {
             use crate::cache::tests::ScuteFixture as _;
             let (header, tree, root) = data.scute_files(parent);
-            let data_blocks = std::num::NonZero::new((data.len() as u64).div_ceil(4096)).unwrap();
             let bytes = if compressed {
                 b"opaque compressed input".to_vec()
             } else {
@@ -407,7 +406,6 @@ pub(crate) mod tests {
                     digest: Digest::Sha256(Sha256::digest(data).into()),
                     size: std::num::NonZeroU64::new(data.len() as u64).unwrap().into(),
                     verity_digest: Digest::Sha256(Sha256::digest(&tree).into()),
-                    data_blocks: data_blocks.into(),
                     salt: devmap_verity::Salt::new(&parent).unwrap().into(),
                 },
             };
