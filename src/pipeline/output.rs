@@ -258,7 +258,6 @@ mod tests {
                     "digest": digest,
                     "size": bytes.len(),
                     "annotations": {
-                        "dev.pichi.scute.verity.data-blocks": "2",
                         "dev.pichi.scute.verity.salt": "00".repeat(32),
                         "dev.pichi.scute.digest": digest,
                         "dev.pichi.scute.size": bytes.len().to_string(),

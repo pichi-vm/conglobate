@@ -139,10 +139,6 @@ pub struct ScuteDescriptor {
 /// not enforced here; chain validation is v0.9 Phase 46 carapace work).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ScuteAnnotations {
-    /// dm-verity header `data_blocks`: COW length rounded up to data blocks.
-    /// Required, positive, and encoded as a decimal annotation string.
-    #[serde(rename = "dev.pichi.scute.verity.data-blocks")]
-    pub data_blocks: AsString<std::num::NonZeroU64>,
     /// Full salt as hex, including the parent-root prefix.
     #[serde(rename = "dev.pichi.scute.verity.salt")]
     pub salt: AsString<Salt>,
@@ -211,10 +207,6 @@ pub enum ManifestValidationError {
         /// The offending value.
         value: String,
     },
-
-    /// Declared data-block count is zero or contradicts a raw blob's size.
-    #[error("invalid data-block count for scute {0}")]
-    BadScuteBlocks(Digest),
 }
 
 impl Manifest {
@@ -281,13 +273,6 @@ impl Manifest {
             let Layer::Scute(d) = layer else {
                 continue;
             };
-            let blocks = d.annotations.data_blocks.get();
-            let block_size = self.annotations.verity.data_block_size.bytes().get();
-            if blocks.checked_mul(u64::from(block_size)).is_none()
-                || (!layer.is_zstd_variant() && blocks != d.size.div_ceil(u64::from(block_size)))
-            {
-                return Err(ManifestValidationError::BadScuteBlocks(d.digest.clone()));
-            }
             if !layer.is_zstd_variant() && d.annotations.digest != d.digest {
                 return Err(ManifestValidationError::BadScuteAnnotation {
                     key: "dev.pichi.scute.digest",
@@ -295,7 +280,8 @@ impl Manifest {
                 });
             }
             let size = d.annotations.size.get();
-            if size.div_ceil(u64::from(block_size)) != blocks
+            let block_size = u64::from(self.annotations.verity.data_block_size.bytes().get());
+            if size.div_ceil(block_size).checked_mul(block_size).is_none()
                 || (!layer.is_zstd_variant() && size != d.size)
             {
                 return Err(ManifestValidationError::BadScuteAnnotation {
@@ -430,22 +416,21 @@ mod tests {
     }
 
     #[test]
-    fn data_blocks_is_a_required_positive_decimal_annotation() {
+    fn scute_size_is_a_required_positive_decimal_annotation() {
         let annotations = ScuteAnnotations {
             digest: Digest::Sha256([0x11; 32]),
             size: NonZeroU64::new(1024).unwrap().into(),
             verity_digest: Digest::Sha256([0x22; 32]),
             salt: Salt::new(&[0]).unwrap().into(),
-            data_blocks: std::num::NonZeroU64::new(2).unwrap().into(),
         };
         let json = serde_json::to_value(&annotations).unwrap();
         let mut missing = json.clone();
         missing
             .as_object_mut()
             .unwrap()
-            .remove("dev.pichi.scute.verity.data-blocks");
+            .remove("dev.pichi.scute.size");
         assert!(serde_json::from_value::<ScuteAnnotations>(missing).is_err());
-        assert_eq!(json["dev.pichi.scute.verity.data-blocks"], "2");
+        assert_eq!(json["dev.pichi.scute.size"], "1024");
         assert_eq!(
             serde_json::from_value::<ScuteAnnotations>(json.clone()).unwrap(),
             annotations
@@ -458,18 +443,15 @@ mod tests {
             serde_json::json!("18446744073709551616"),
             serde_json::Value::Null,
         ] {
-            for key in ["dev.pichi.scute.verity.data-blocks", "dev.pichi.scute.size"] {
-                let mut json = json.clone();
-                json[key] = invalid.clone();
-                assert!(serde_json::from_value::<ScuteAnnotations>(json).is_err());
-            }
+            let mut json = json.clone();
+            json["dev.pichi.scute.size"] = invalid;
+            assert!(serde_json::from_value::<ScuteAnnotations>(json).is_err());
         }
     }
 
     #[test]
     fn content_identities_are_required_string_annotations() {
         let legacy = serde_json::json!({
-            "dev.pichi.scute.verity.data-blocks": "2",
             "dev.pichi.scute.verity.salt": "00".repeat(32),
         });
         assert!(serde_json::from_value::<ScuteAnnotations>(legacy.clone()).is_err());
@@ -539,36 +521,32 @@ mod tests {
     }
 
     #[test]
-    fn validate_data_blocks_against_raw_descriptor() {
-        for blocks in [1u64, 2, 1024, u64::MAX] {
-            let mut manifest = sample_base_manifest();
-            let Layer::Scute(scute) = &mut manifest.layers[0] else {
-                unreachable!()
-            };
-            scute.annotations.data_blocks = std::num::NonZeroU64::new(blocks).unwrap().into();
-            assert_eq!(manifest.validate().is_ok(), blocks == 1);
-        }
+    fn validate_padded_scute_extent() {
         let mut manifest = sample_base_manifest();
-        let Layer::Scute(mut scute) = manifest.layers.remove(0) else {
-            unreachable!()
-        };
-        scute.annotations.data_blocks = std::num::NonZeroU64::new(2).unwrap().into();
-        scute.annotations.size = NonZeroU64::new(8192).unwrap().into();
-        manifest
-            .layers
-            .push(Layer::Scute(crate::artifact::ScuteDescriptor {
-                media_type: crate::artifact::Compressable::Zstd(Default::default()),
-                ..scute
-            }));
-        assert!(manifest.validate().is_ok());
         let Layer::Scute(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        scute.annotations.data_blocks = std::num::NonZeroU64::MAX.into();
-        assert!(matches!(
-            manifest.validate(),
-            Err(ManifestValidationError::BadScuteBlocks(_))
-        ));
+        scute.media_type = crate::artifact::Compressable::Zstd(Default::default());
+        for block_size in [2048u64, 4096] {
+            manifest.annotations.verity.data_block_size = block_size
+                .to_string()
+                .parse::<devmap_core::BlockSize<devmap_verity::Constraint>>()
+                .unwrap()
+                .into();
+            for size in [
+                block_size - 1,
+                block_size,
+                block_size + 1,
+                u64::MAX - (block_size - 1),
+                u64::MAX,
+            ] {
+                let Layer::Scute(scute) = &mut manifest.layers[0] else {
+                    unreachable!()
+                };
+                scute.annotations.size = NonZeroU64::new(size).unwrap().into();
+                assert_eq!(manifest.validate().is_ok(), size != u64::MAX);
+            }
+        }
     }
 
     fn sample_base_manifest() -> Manifest {
@@ -585,7 +563,6 @@ mod tests {
                     digest: Digest::Sha256([0x11; 32]),
                     size: NonZeroU64::new(1024).unwrap().into(),
                     verity_digest: Digest::Sha256([0x22; 32]),
-                    data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
                     salt: Salt::new(&[0; 32]).unwrap().into(),
                 },
             })],
@@ -689,12 +666,6 @@ mod tests {
         assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
         m.annotations.verity.data_block_size = "2048"
             .parse::<devmap_core::BlockSize<devmap_verity::Constraint>>()
-            .unwrap()
-            .into();
-        let Layer::Scute(scute) = &mut m.layers[0] else {
-            unreachable!()
-        };
-        scute.annotations.data_blocks = std::num::NonZeroU64::new(scute.size.div_ceil(2048))
             .unwrap()
             .into();
         m.validate().unwrap();
@@ -854,7 +825,6 @@ mod tests {
                 digest: Digest::Sha256([0x11; 32]),
                 size: NonZeroU64::new(1024).unwrap().into(),
                 verity_digest: Digest::Sha256([0x22; 32]),
-                data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
                 salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
             },
         };
@@ -896,7 +866,6 @@ mod tests {
                 digest: Digest::Sha256([0x11; 32]),
                 size: NonZeroU64::new(1024).unwrap().into(),
                 verity_digest: Digest::Sha256([0x22; 32]),
-                data_blocks: std::num::NonZeroU64::new(1).unwrap().into(),
                 salt: Salt::new(&[0xde, 0xad, 0xbe, 0xef]).unwrap().into(),
             },
         };

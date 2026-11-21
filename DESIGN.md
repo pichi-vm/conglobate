@@ -1039,7 +1039,7 @@ Require `dev.pichi.carapace.verity.hash` once on a manifest containing scutes.
 Producers stamp the final sealed root and preserve it through build binding;
 extend updates it together with the automatic boot command-line binding.
 Boot-only artifacts have no carapace root annotation. Keep the existing
-per-scute salt/data-blocks for Pichi to reconstruct headers and trees.
+per-scute salt and decompressed size for Pichi to reconstruct headers and trees.
 Manifest verity parameters are optional: `data-block-size` and `hash-block-size`
 default to 4096 and must be powers of two between 512 and 524288 bytes.
 `version` is fixed at 1 and may be omitted. Supplied block sizes and version
@@ -1069,14 +1069,10 @@ to accept existing layers with shorter suffixes. Identical
 COW bytes retain their blob digest, but independently sealed layers have
 different salts, verity trees and roots.
 
-Every raw or compressed scute requires `dev.pichi.scute.verity.data-blocks`
-as a positive decimal string. Leading zeros and a leading `+` are accepted;
-whitespace is invalid. Producers emit decimal digits without leading zeros
-or a sign. Its padded byte extent must fit in `u64`. For
-raw scutes it must equal the descriptor size rounded up to the data block
-size; for compressed scutes it bounds decoded bytes, with only the final
-block allowed to be partial. Missing counts are invalid in v1. Producers
-emit the count used to format the verity tree; no version identifiers change.
+The verity data-block count is derived by rounding the exact decompressed
+scute size up to the chain's data block size. Its padded byte extent must
+fit in `u64`; only the final block may be partial. There is no separate
+block-count annotation.
 
 Every scute descriptor must include three content-identity string annotations:
 
@@ -1735,8 +1731,9 @@ comparison or packing failures reject sealing. There is no image-to-carapace
 import/conversion step.
 
 Scute wire parsing belongs to devmap-snapshot. Carapace owns read-only loop,
-verity and snapshot assembly. Pichi bounds decompression by the required block
-count and supplies prepared data/hash files in the cache. Conglobate passes
+verity and snapshot assembly. Consumers must bound decompression by the
+required decompressed size and derive the verity block count from that size.
+Pichi supplies prepared data/hash files in the cache. Conglobate passes
 its cache and authenticated index selection to the binary's `FromIndex`
 implementation for `carapace::Chain`. It walks scutes in reverse manifest order,
 starting at the trusted tip. Each source blob's `.prepared` directory holds

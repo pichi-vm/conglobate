@@ -64,7 +64,7 @@ impl SealedScute {
         ScuteReader {
             file: self.data.as_file(),
             position: 0,
-            length: self.descriptor.annotations.data_blocks.get() * 4096,
+            length: self.descriptor.annotations.size.get(),
         }
     }
 }
@@ -220,7 +220,6 @@ impl<'w> Scratch<'w> {
                     .expect("sealed scute is nonempty")
                     .into(),
                 verity_digest: Digest::Sha256(verity_digest.into()),
-                data_blocks: data_blocks.into(),
                 salt: header.parameters.salt.into(),
             },
         };
@@ -400,7 +399,6 @@ mod tests {
             sealed.data_reader().read_to_end(&mut data).unwrap();
             assert_eq!(data, bytes);
             encoded_blob(&sealed, &bytes);
-            assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 2);
             let mut tree = vec![0; 8192];
             sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
             assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
@@ -474,7 +472,6 @@ mod tests {
         assert_eq!((entry.old_chunk, entry.new_chunk), (2, 2));
         assert!(packed[4112..].iter().all(|byte| *byte == 0));
         encoded_blob(&sealed, &packed);
-        assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 3);
         let mut header = [0; 512];
         sealed.files().1.read_exact_at(&mut header, 0).unwrap();
         assert_eq!(

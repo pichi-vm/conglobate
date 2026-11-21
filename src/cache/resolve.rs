@@ -178,8 +178,6 @@ mod tests {
                 let (_, tree, root) = data.scute_files(parent);
                 let data_digest = Digest::Sha256(Sha256::digest(&data).into());
                 let data_size = data.len();
-                let data_blocks =
-                    std::num::NonZero::new((data.len() as u64).div_ceil(4096)).unwrap();
                 let bytes = if compressed {
                     b"unread encoded scute".to_vec()
                 } else {
@@ -194,7 +192,6 @@ mod tests {
                         digest: data_digest,
                         size: std::num::NonZeroU64::new(data_size as u64).unwrap().into(),
                         verity_digest: Digest::Sha256(Sha256::digest(&tree).into()),
-                        data_blocks: data_blocks.into(),
                         salt: devmap_verity::Salt::new(&parent).unwrap().into(),
                     },
                 };
